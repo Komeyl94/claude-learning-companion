@@ -133,11 +133,14 @@ Explain "${concept.concept}" strictly as it relates to this context. Exactly 1-2
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
-    await $.command.register({
-      name: 'roadmap',
-      description: 'Learning companion: show your roadmap, or start a new one with a goal',
-      argumentHint: '[goal]',
-    })
+    // A name another command or skill already holds is refused; keep the rest working.
+    await $.command
+      .register({
+        name: 'roadmap',
+        description: 'Learning companion: show your roadmap, or start a new one with a goal',
+        argumentHint: '[goal]',
+      })
+      .catch((err: unknown) => $.ui.toast(`/roadmap unavailable: ${err instanceof Error ? err.message : String(err)}`))
     showStatus($, await loadState($))
     return next(e)
   })
