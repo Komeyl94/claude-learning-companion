@@ -19,10 +19,10 @@ claude --plugin-dir ./claude-learning-companion
 
 ## Use
 
-1. `/learn Node.js backend`: generate a 5-concept roadmap with detection keywords.
+1. `/roadmap Node.js backend`: generate a 5-concept roadmap with detection keywords.
 2. Work normally. When Claude writes or runs code that matches a due concept, a toast says so.
 3. When the turn ends you get a 1–2 sentence explanation tied to that code and a native question: Forgot it / Hard / Good / Easy (or type 0–5 under Other).
-4. `/learn`: show the roadmap and when each concept is next due.
+4. `/roadmap`: show the roadmap and when each concept is next due.
 
 State is kept in the plugin's own store across sessions.
 
@@ -35,6 +35,6 @@ claude plugin test .
 
 | File | Role |
 | --- | --- |
-| `hooks/register.ts` | Hooks: `session.start`, `command.run` (`/learn`), `tool.call` (spot concepts), `turn.complete` (explain + rate) |
+| `hooks/register.ts` | Hooks: `session.start`, `command.run` (`/roadmap`), `tool.call` (spot concepts), `turn.complete` (explain + rate) |
 | `hooks/sm2.ts` | Pure logic: SM-2, keyword matching, roadmap and rating parsing |
 | `tests/` | `claude plugin test` suites |

@@ -64,7 +64,7 @@ Example: [{"concept": "Routing", "keywords": ["express.router", "app.get", "req.
 }
 
 function describeRoadmap(state: LearningState | undefined): string {
-  if (!state) return 'No roadmap yet. Start one with `/learn <goal>`, e.g. `/learn Node.js backend`.'
+  if (!state) return 'No roadmap yet. Start one with `/roadmap <goal>`, e.g. `/roadmap Node.js backend`.'
   const now = Date.now()
   return [
     `🎯 Goal: ${state.goal}`,
@@ -134,7 +134,7 @@ Explain "${concept.concept}" strictly as it relates to this context. Exactly 1-2
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
-      name: 'learn',
+      name: 'roadmap',
       description: 'Learning companion: show your roadmap, or start a new one with a goal',
       argumentHint: '[goal]',
     })
@@ -142,7 +142,7 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'learn' }, async ($, e) => {
+  on('command.run', { command: 'roadmap' }, async ($, e) => {
     const goal = (e.args ?? '').trim()
     if (!goal) return { text: describeRoadmap(await loadState($)) }
     return { text: await generateRoadmap($, goal) }
