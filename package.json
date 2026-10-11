@@ -1,0 +1,12 @@
+{
+  "name": "claude-learning-companion",
+  "version": "2.0.0",
+  "description": "A Claude Code plugin that turns your coding sessions into spaced-repetition learning.",
+  "keywords": ["claude-code", "claude-code-plugin", "spaced-repetition", "learning"],
+  "files": [
+    ".claude-plugin/plugin.json",
+    "hooks/"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

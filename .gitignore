@@ -1,0 +1,5 @@
+node_modules/
+# Laid by Claude Code when the plugin loads from this folder
+.claude-plugin/types/
+tsconfig.json
+*:Zone.Identifier

@@ -1,0 +1,12 @@
+{
+  "name": "learning-companion",
+  "description": "Learning Companion: spaced-repetition learning inside Claude Code.",
+  "owner": { "name": "Your Name" },
+  "plugins": [
+    {
+      "name": "learning-companion",
+      "source": "./",
+      "description": "Spots roadmap concepts while Claude codes, explains them, and schedules reviews with SM-2."
+    }
+  ]
+}
