@@ -1,7 +1,7 @@
 {
   "name": "learning-companion",
   "description": "Learning Companion: spaced-repetition learning inside Claude Code.",
-  "owner": { "name": "Your Name" },
+  "owner": { "name": "Komeyl Mohebian" },
   "plugins": [
     {
       "name": "learning-companion",

@@ -3,6 +3,6 @@
   "displayName": "Learning Companion",
   "version": "2.0.0",
   "description": "Spots concepts from your learning roadmap while Claude codes, explains them, and schedules reviews with spaced repetition (SM-2).",
-  "author": { "name": "Your Name" },
+  "author": { "name": "Komeyl Mohebian" },
   "license": "MIT"
 }

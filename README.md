@@ -7,7 +7,7 @@ Built as a **mod** (function-hook plugin). Requires a Claude Code version with f
 ## Install
 
 ```
-claude plugin marketplace add <path-or-git-url-of-this-repo>
+claude plugin marketplace add Komeyl94/claude-learning-companion
 claude plugin install learning-companion@learning-companion
 ```
 
