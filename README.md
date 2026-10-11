@@ -26,6 +26,12 @@ claude --plugin-dir ./claude-learning-companion
 
 State is kept in the plugin's own store across sessions.
 
+## Privacy
+
+- Model calls go through your own Claude Code session; nothing is sent anywhere else.
+- Writes to secret files (`.env*`, `*.pem`, `*.key`, SSH keys, `credentials`, `secrets.*`, `.npmrc`, `.netrc`) are ignored entirely.
+- For other code, up to 500 characters are kept until the review ends, with secret-looking values (API keys, tokens, passwords, URL credentials, private keys) replaced by `[REDACTED]`.
+
 ## Develop
 
 ```

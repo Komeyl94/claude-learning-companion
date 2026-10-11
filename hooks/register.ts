@@ -4,8 +4,10 @@ import {
   RATINGS,
   applyRating,
   findDueConcept,
+  isSecretPath,
   parseRating,
   parseRoadmap,
+  redactSecrets,
 } from './sm2'
 
 type $ = EngineInterface
@@ -39,6 +41,13 @@ function codeOf(e: unknown): string {
     for (const edit of input.edits) parts.push((edit as Record<string, unknown>)?.new_string)
   }
   return parts.filter((p): p is string => typeof p === 'string').join('\n')
+}
+
+// The file a tool call writes, if any.
+function pathOf(e: unknown): string {
+  const input = e as Record<string, unknown>
+  const path = input.file_path ?? input.notebook_path
+  return typeof path === 'string' ? path : ''
 }
 
 async function generateRoadmap($: $, goal: string): Promise<string> {
@@ -158,11 +167,12 @@ export const register: Register = on => {
   // so the tool call itself is never slowed down.
   on('tool.call', { tool: TRACKED_TOOLS }, async ($, e, next) => {
     const state = await loadState($)
-    if (state && !state.pendingReview) {
+    // Secret files (.env, keys, credentials) are never read or stored.
+    if (state && !state.pendingReview && !isSecretPath(pathOf(e))) {
       const code = codeOf(e)
       const concept = findDueConcept(state, code, Date.now())
       if (concept) {
-        state.pendingReview = { concept: concept.concept, snippet: code.slice(0, 500) }
+        state.pendingReview = { concept: concept.concept, snippet: redactSecrets(code).slice(0, 500) }
         await saveState($, state)
         $.ui.toast(`💡 Spotted: ${concept.concept}`, { timeoutMs: 10_000 })
       }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { applyRating, findDueConcept, matchesKeyword, parseRating, parseRoadmap, type LearningState } from '../hooks/sm2'
+import { applyRating, findDueConcept, isSecretPath, matchesKeyword, parseRating, parseRoadmap, redactSecrets, type LearningState } from '../hooks/sm2'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -59,5 +59,31 @@ describe('parsing', () => {
     expect(parseRating('Good')).toBe(4)
     expect(parseRating(' 2 ')).toBe(2)
     expect(parseRating('7')).toBeUndefined()
+  })
+})
+
+describe('secrets', () => {
+  test('secret files are recognised', () => {
+    for (const p of ['.env', 'app/.env.production', 'C:\\proj\\.env', 'certs/server.key', '/home/u/.ssh/id_ed25519', 'config/secrets.yml', '.npmrc'])
+      expect(isSecretPath(p)).toBe(true)
+    for (const p of ['routes/web.php', 'env.ts', 'app/Http/Middleware/Authenticate.php', 'keyboard.ts'])
+      expect(isSecretPath(p)).toBe(false)
+  })
+
+  test('secret values are redacted, code is kept', () => {
+    const cases: [string, string][] = [
+      ['export ANTHROPIC_API_KEY=sk-ant-abc123def456ghi', 'export ANTHROPIC_API_KEY=[REDACTED]'],
+      ["DB_PASSWORD='hunter2'", "DB_PASSWORD='[REDACTED]'"],
+      ["'token' => 'abcdef123456'", "'token' => '[REDACTED]'"],
+      ['curl -H "Authorization: Bearer abcdefghijkl"', 'curl -H "Authorization: Bearer [REDACTED]"'],
+      ['git clone https://user:pa55@github.com/x/y', 'git clone https://[REDACTED]@github.com/x/y'],
+      ['push with ghp_aaaaaaaaaaaaaaaaaaaaaaaa', 'push with [REDACTED]'],
+      ['-----BEGIN RSA PRIVATE KEY-----\nMIIabc\n-----END RSA PRIVATE KEY-----', '[REDACTED PRIVATE KEY]'],
+    ]
+    for (const [input, expected] of cases) expect(redactSecrets(input)).toBe(expected)
+    expect(redactSecrets("Route::middleware('auth')->group(fn () => ['auth' => ['web']])"))
+      .toBe("Route::middleware('auth')->group(fn () => ['auth' => ['web']])")
+    expect(redactSecrets("Route::get('/users', [UserController::class, 'index']);"))
+      .toBe("Route::get('/users', [UserController::class, 'index']);")
   })
 })

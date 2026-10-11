@@ -101,3 +101,26 @@ export function parseRating(answer: string): number | undefined {
   const n = Number.parseInt(answer.trim(), 10)
   return Number.isInteger(n) && n >= 0 && n <= 5 ? n : undefined
 }
+
+// --- Secret handling ---
+// Files whose contents are never inspected or stored.
+const SECRET_PATH = /(^|[\/\\])(\.env(\..*)?|\.npmrc|\.netrc|\.pgpass|credentials(\.\w+)?|secrets?\.\w+|id_(rsa|dsa|ecdsa|ed25519)(\.pub)?)$|\.(pem|key|p12|pfx|keystore|jks)$/i
+
+export const isSecretPath = (path: string) => SECRET_PATH.test(path)
+
+const SECRET_PATTERNS: [RegExp, string][] = [
+  // PEM private key blocks
+  [/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(-----END [A-Z ]*PRIVATE KEY-----|$)/g, '[REDACTED PRIVATE KEY]'],
+  // Credentials inside URLs: scheme://user:pass@host
+  [/(\w+:\/\/)[^\s\/:@]+:[^\s\/@]+@/g, '$1[REDACTED]@'],
+  // Authorization headers
+  [/\b(bearer|basic)\s+[A-Za-z0-9._~+\/=-]{8,}/gi, '$1 [REDACTED]'],
+  // NAME=value / name: value where the name looks secret
+  [/\b([\w.-]*(?:key|secret|token|passw(?:or)?d|pwd|auth|credential)[\w.-]*["']?\s*(?:=>|=(?!>)|:(?!:))\s*)(["']?)(?!\[REDACTED|(?:bearer|basic)\s)([^\s"',;()\[\]{}]+)\2/gi, '$1$2[REDACTED]$2'],
+  // Well-known token formats
+  [/\b(sk-ant-[\w-]{10,}|sk-[A-Za-z0-9]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_\w{20,}|glpat-[\w-]{20,}|xox[abprs]-[\w-]{10,}|AKIA[0-9A-Z]{16}|AIza[\w-]{35}|eyJ[\w-]{10,}\.[\w-]{10,}\.[\w-]{10,})\b/g, '[REDACTED]'],
+]
+
+export function redactSecrets(text: string): string {
+  return SECRET_PATTERNS.reduce((t, [pattern, replacement]) => t.replace(pattern, replacement), text)
+}
