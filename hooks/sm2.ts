@@ -44,9 +44,15 @@ export function applyRating(item: Concept, quality: number, now: number): Concep
 // --- Keyword matching ---
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-// Whole-word match, so "get" does not fire on "target".
-export const matchesKeyword = (text: string, kw: string) =>
-  new RegExp(`(^|\\W)${escapeRegex(kw.toLowerCase())}($|\\W)`).test(text)
+// Whole-word match, so "get" does not fire on "target". A boundary is only
+// required on a side where the keyword starts or ends with a word character,
+// so "route::" still matches "Route::get(" and "table->" matches "$table->id()".
+export function matchesKeyword(text: string, kw: string) {
+  const k = kw.toLowerCase()
+  const before = /^\w/.test(k) ? '(?<!\\w)' : ''
+  const after = /\w$/.test(k) ? '(?!\\w)' : ''
+  return new RegExp(`${before}${escapeRegex(k)}${after}`).test(text)
+}
 
 export function findDueConcept(state: LearningState, code: string, now: number): Concept | undefined {
   const text = code.toLowerCase()

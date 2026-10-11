@@ -27,6 +27,13 @@ describe('matching', () => {
     expect(matchesKeyword('const target = 1', 'get')).toBe(false)
   })
 
+  test('keywords ending in punctuation match what follows them', () => {
+    expect(matchesKeyword("route::get('/users', fn)", 'route::')).toBe(true)
+    expect(matchesKeyword('$table->id();', 'table->')).toBe(true)
+    expect(matchesKeyword('$validated = $request->validate()', '$validated')).toBe(true)
+    expect(matchesKeyword('reroute::x', 'route::')).toBe(false)
+  })
+
   test('only due, unmastered concepts are found', () => {
     const state: LearningState = {
       goal: 'g',

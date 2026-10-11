@@ -47,7 +47,7 @@ async function generateRoadmap($: $, goal: string): Promise<string> {
     timeoutMs: 60_000,
     prompt: `You are a curriculum designer. The user's goal is: "${goal}".
 Create a list of 5 key technical concepts they need to learn, with 3-5 lowercase keywords for each to detect when they are coding.
-Prefer distinctive keywords (API names, library names) over common words like "get" or "data".
+Each keyword must be a whole token exactly as it appears in source code (e.g. "route::", "hasmany", "$table->"), never a fragment of a longer identifier. Prefer distinctive API or library names over common words like "get" or "data".
 Return ONLY a raw JSON array of objects, with absolutely no markdown fences or extra text.
 Example: [{"concept": "Routing", "keywords": ["express.router", "app.get", "req.params"]}]`,
   })
