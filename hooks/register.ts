@@ -27,7 +27,8 @@ async function saveState($: $, state: LearningState) {
 function showStatus($: $, state: LearningState | undefined) {
   if (!state) return $.ui.status(undefined)
   const mastered = state.roadmap.filter(c => c.status === 'mastered').length
-  $.ui.status(`📚 ${mastered}/${state.roadmap.length} mastered`)
+  const pending = state.pendingReview ? ` · 💡 ${state.pendingReview.concept} (review at end of turn)` : ''
+  $.ui.status(`📚 ${mastered}/${state.roadmap.length} mastered${pending}`)
 }
 
 // The code a tool call writes or runs, from whichever input fields it has.
@@ -93,25 +94,26 @@ async function review($: $, state: LearningState) {
     model: MODEL,
     maxTokens: 200,
     effort: 'low',
-    timeoutMs: 8000,
+    timeoutMs: 15_000,
     prompt: `You are a concise programming tutor. The user's goal is: "${state.goal}".
 They just worked with this code: \`${pending.snippet}\`.
 Explain "${concept.concept}" strictly as it relates to this context. Exactly 1-2 short sentences. Plain text, no markdown.`,
   })
+  // The explanation goes in the question itself, where it is sure to be seen,
+  // and in the transcript, where it stays after the question closes.
+  const question = `How well do you understand "${concept.concept}"?`
+  let prompt = question
   if (explanation.isAnswered) {
-    await $.session
-      .append({
-        message: {
-          type: 'system',
-          content: [{ type: 'text', text: `💡 ${concept.concept}: ${explanation.text.trim()}` }],
-        },
-      })
-      .catch(() => $.ui.toast(`💡 ${concept.concept}: ${explanation.text.trim()}`, { timeoutMs: 15_000 }))
+    const text = `💡 ${concept.concept}: ${explanation.text.trim()}`
+    $.ui.log(text)
+    prompt = `${text}\n\n${question}`
+  } else {
+    $.ui.log(`Explanation unavailable (${explanation.reason}).`)
   }
 
   let answer: string
   try {
-    answer = await $.ui.ask(`How well do you understand "${concept.concept}"?`, {
+    answer = await $.ui.ask(prompt, {
       header: 'Review',
       options: Object.keys(RATINGS),
     })
@@ -162,7 +164,7 @@ export const register: Register = on => {
       if (concept) {
         state.pendingReview = { concept: concept.concept, snippet: code.slice(0, 500) }
         await saveState($, state)
-        $.ui.toast(`💡 Roadmap concept spotted: ${concept.concept}. Quick review when this turn ends.`)
+        $.ui.toast(`💡 Spotted: ${concept.concept}`, { timeoutMs: 10_000 })
       }
     }
     return next(e)
