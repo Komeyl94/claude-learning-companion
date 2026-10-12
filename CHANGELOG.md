@@ -11,6 +11,14 @@ claude plugin marketplace update learning-companion
 claude plugin update learning-companion@learning-companion
 ```
 
+## [2.3.1] - 2026-10-12
+
+### Fixed
+
+- In the Claude Desktop app, closing a lesson, quiz or rating dialog now ends the lesson. Before, Desktop
+  answered the closed dialog with a note such as "[User dismissed]", which the lesson took for a question:
+  it answered it and asked again, over and over. The terminal was not affected.
+
 ## [2.3.0] - 2026-10-12
 
 ### Changed
@@ -87,6 +95,7 @@ Rebuilt as a function-hook plugin (mod). Needs Claude Code 2.1.288 or later; no 
 - Writes to secret files (`.env*`, keys, credentials) are skipped, and secret-looking values in kept snippets
   are replaced with `[REDACTED]`.
 
+[2.3.1]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.0.0...v2.1.0

@@ -184,13 +184,23 @@ async function addRoadmap($: $, incoming: Roadmap): Promise<string> {
   ].join('\n')
 }
 
+// `$.ui.ask`, rejecting when the dialog is closed. The terminal rejects on its
+// own; the Desktop app instead answers with a bracketed note such as
+// "[User dismissed — do not proceed, wait for next instruction]" or
+// "[No preference]", which must not be read as a typed question.
+async function ask($: $, question: string, options: Parameters<$['ui']['ask']>[1]): Promise<string> {
+  const answer = await $.ui.ask(question, options)
+  if (/^\[[^\]]*\]$/.test(answer.trim())) throw new Error(`dialog closed: ${answer}`)
+  return answer
+}
+
 // Deletes a roadmap and its progress, once the learner confirms.
 async function removeRoadmap($: $, selector: string): Promise<string> {
   const found = findRoadmap(await loadState($), selector)
   if (typeof found === 'string') return found
   const count = found.roadmap.length
   try {
-    const answer = await $.ui.ask(`Remove "${found.goal}" and the progress on its ${count} concepts? This cannot be undone.`, {
+    const answer = await ask($, `Remove "${found.goal}" and the progress on its ${count} concepts? This cannot be undone.`, {
       header: 'Remove',
       options: ['Remove it', 'Keep it'],
     })
@@ -343,7 +353,7 @@ Return ONLY raw JSON: {"question": "...", "options": ["...", "...", "...", "..."
   const parsed = reply.isAnswered ? parseQuiz(reply.text) : undefined
   const q = parsed && shuffleQuiz(parsed)
   if (!q) return { text: 'Quiz unavailable this time.', correct: undefined }
-  const picked = await $.ui.ask(q.question, { header: 'Quiz', options: q.options })
+  const picked = await ask($, q.question, { header: 'Quiz', options: q.options })
   const right = q.options[q.answer]
   const correct = picked === right
   return {
@@ -391,12 +401,10 @@ async function lesson($: $, goal: string, concept: Concept, snippet: string | un
 
   try {
     for (let step = 0; step < MAX_LESSON_STEPS; step++) {
-      const choice = await $.ui
-        .ask(`${shown}\n\nWhat next? (Pick "Type something" to ask your own question.)`, {
-          header: 'Lesson',
-          options: Object.values(LESSON),
-        })
-        .finally(flush)
+      const choice = await ask($, `${shown}\n\nWhat next? (Pick "Type something" to ask your own question.)`, {
+        header: 'Lesson',
+        options: Object.values(LESSON),
+      }).finally(flush)
       if (choice === LESSON.done) break
       let text: string | undefined
       if (choice === LESSON.quiz) {
@@ -419,7 +427,7 @@ async function lesson($: $, goal: string, concept: Concept, snippet: string | un
     flush()
 
     const suggested = suggestRating(quizResults)
-    const answer = await $.ui.ask(
+    const answer = await ask($,
       `How well do you understand "${concept.concept}" now?${suggested ? ` (Your quiz suggests: ${suggested}.)` : ''}`,
       // Without a quiz, "Good" goes first, as in Anki: Enter alone never rates "Forgot it".
       { header: 'Review', options: ratingOptions(suggested ?? 'Good') },

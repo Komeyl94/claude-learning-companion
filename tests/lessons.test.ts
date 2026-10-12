@@ -103,6 +103,58 @@ test('/learn stops when the lesson is closed, leaving the concept new', async ($
   expect(progress.text).toContain('⬜ Routing: not started')
 })
 
+// The Desktop app answers a closed dialog with a note instead of rejecting.
+const DISMISSED = '[User dismissed — do not proceed, wait for next instruction]'
+
+for (const note of [DISMISSED, '[No preference]']) {
+  test(`/learn stops when Desktop closes the lesson with "${note}", without asking the model about it`, async ($, on) => {
+    mock.store(on, store([fresh('Routing')]))
+    const prompts = model(on)
+    files(on)
+    const asked = learner(on, { Lesson: [note, 'Rate it'], Review: ['Good'] })
+    on('ui.log', () => ({ value: undefined }))
+
+    const out = await $.command.run(run('learn'))
+    expect(out.text).toContain('Stopped "Routing"')
+    // One dialog, then nothing: no answer to the note, no second dialog.
+    expect(asked.map(a => a.header)).toEqual(['Lesson'])
+    expect(prompts.some(p => p.includes(note))).toBe(false)
+    const progress = await $.command.run(run('progress'))
+    expect(progress.text).toContain('⬜ Routing: not started')
+  })
+}
+
+test('closing the quiz or the rating in Desktop stops the lesson without rating it', async ($, on) => {
+  mock.store(on, store([fresh('Routing'), fresh('Middleware')]))
+  model(on)
+  files(on)
+  const asked = learner(on, {
+    Lesson: ['Quiz me', 'Rate it'],
+    Quiz: [DISMISSED],
+    Review: [DISMISSED],
+  })
+  on('ui.log', () => ({ value: undefined }))
+
+  const first = await $.command.run(run('learn'))
+  expect(first.text).toContain('Stopped "Routing"')
+  const second = await $.command.run(run('learn'))
+  expect(second.text).toContain('Stopped "Routing"')
+  expect(asked.map(a => a.header)).toEqual(['Lesson', 'Quiz', 'Lesson', 'Review'])
+})
+
+test('/practice stops at the first lesson closed in Desktop', async ($, on) => {
+  const due = { nextReviewDate: 1, repetitions: 1, interval: 1 }
+  mock.store(on, store([fresh('Routing', due), fresh('Middleware', due)]))
+  model(on)
+  files(on)
+  const asked = learner(on, { Lesson: [DISMISSED, DISMISSED] })
+  on('ui.log', () => ({ value: undefined }))
+
+  const out = await $.command.run(run('practice'))
+  expect(out.text).toContain('Reviewed 0 of 2')
+  expect(asked).toHaveLength(1)
+})
+
 test('/practice goes through every due concept', async ($, on) => {
   mock.store(on, store([
     fresh('Routing', { nextReviewDate: 1, repetitions: 1, interval: 1 }),

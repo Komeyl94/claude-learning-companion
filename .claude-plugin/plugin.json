@@ -1,7 +1,7 @@
 {
   "name": "learning-companion",
   "displayName": "Learning Companion",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Turns the code Claude writes into lessons, quizzes and spaced-repetition reviews (SM-2), tied to roadmaps of what you want to learn.",
   "author": {
     "name": "Komeyl Mohebian"
