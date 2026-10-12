@@ -19,10 +19,29 @@ claude --plugin-dir ./claude-learning-companion
 
 ## Use
 
-1. `/roadmap Node.js backend`: generate a 5-concept roadmap with detection keywords.
+1. `/roadmap Node.js backend`: generate a 12–20 concept roadmap, ordered into stages, with detection keywords.
 2. Work normally. When Claude writes or runs code that matches a due concept, a toast says so.
-3. When the turn ends you get a 1–2 sentence explanation tied to that code and a native question: Forgot it / Hard / Good / Easy (or type 0–5 under Other).
-4. `/roadmap`: show the roadmap and when each concept is next due.
+3. When the turn ends you get a short lesson tied to that code. Pick what comes next, as many times as you like:
+   - **Show an example**: a different, realistic example
+   - **Go deeper**: how it works underneath, a common mistake, when not to use it
+   - **Quiz me**: a multiple-choice question, checked on the spot
+   - **Other**: type your own question about the concept
+   - **Rate it**: Forgot it / Hard / Good / Easy (or 0–5 under Other) schedules the next review
+4. `/progress`: every roadmap by stage, what is mastered, learning, due, or not started. `/progress 2` (or `/progress docker`) shows one.
+5. `/tutor <question>`: ask a side question at any time, even mid-turn. It sees the current conversation, like `/btw`, and changes nothing.
+
+### Several roadmaps
+
+You can learn more than one thing at once: concepts are spotted from every roadmap.
+
+| Command | Does |
+| --- | --- |
+| `/roadmap` | Lists your roadmaps, one line each |
+| `/roadmap <goal>` | Adds a roadmap; for a goal you already have, updates it instead |
+| `/roadmap update <#\|name>` | Regenerates a roadmap, keeping your progress. Concepts you have studied are never dropped |
+| `/roadmap remove <#\|name>` | Deletes a roadmap and its progress, after you confirm |
+
+A roadmap is named by its number in `/roadmap`, its goal, or a unique part of the goal.
 
 State is kept in the plugin's own store across sessions.
 
@@ -41,6 +60,6 @@ claude plugin test .
 
 | File | Role |
 | --- | --- |
-| `hooks/register.ts` | Hooks: `session.start`, `command.run` (`/roadmap`), `tool.call` (spot concepts), `turn.complete` (explain + rate) |
-| `hooks/sm2.ts` | Pure logic: SM-2, keyword matching, roadmap and rating parsing |
+| `hooks/register.ts` | Hooks: `session.start`, `command.run` (`/roadmap`, `/progress`, `/tutor`), `tool.call` (spot concepts), `turn.complete` (lesson + rate) |
+| `hooks/sm2.ts` | Pure logic: SM-2, keyword matching, roadmap, quiz and rating parsing, progress view |
 | `tests/` | `claude plugin test` suites |

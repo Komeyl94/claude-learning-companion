@@ -3,6 +3,8 @@
 export type Concept = {
   concept: string
   keywords: string[]
+  // Roadmap section, e.g. "Foundations"; absent on roadmaps made before stages.
+  stage?: string
   status: 'learning' | 'mastered'
   nextReviewDate: number
   repetitions?: number
@@ -10,11 +12,27 @@ export type Concept = {
   interval?: number
 }
 
-export type LearningState = {
+export type Roadmap = {
   goal: string
   roadmap: Concept[]
+}
+
+export type LearningState = {
+  roadmaps: Roadmap[]
   // Concept spotted during the current turn, reviewed when the turn ends.
-  pendingReview: { concept: string; snippet: string } | null
+  pendingReview: { goal: string; concept: string; snippet: string } | null
+}
+
+// Reads the store's value, upgrading the single-roadmap shape of 2.0
+// ({ goal, roadmap, pendingReview }) to a list of roadmaps.
+export function migrateState(raw: unknown): LearningState | undefined {
+  const value = raw as Record<string, unknown> | undefined
+  if (!value) return undefined
+  if (Array.isArray(value.roadmaps)) return value as unknown as LearningState
+  if (typeof value.goal === 'string' && Array.isArray(value.roadmap)) {
+    return { roadmaps: [{ goal: value.goal, roadmap: value.roadmap as Concept[] }], pendingReview: null }
+  }
+  return undefined
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -54,13 +72,57 @@ export function matchesKeyword(text: string, kw: string) {
   return new RegExp(`${before}${escapeRegex(k)}${after}`).test(text)
 }
 
-export function findDueConcept(state: LearningState, code: string, now: number): Concept | undefined {
+// The first due, unmastered concept the code uses, across every roadmap.
+export function findDueConcept(state: LearningState, code: string, now: number): { goal: string; concept: Concept } | undefined {
   const text = code.toLowerCase()
-  return state.roadmap.find(item =>
-    item.status !== 'mastered' &&
-    (!item.nextReviewDate || now >= item.nextReviewDate) &&
-    item.keywords.some(kw => matchesKeyword(text, kw)),
-  )
+  for (const { goal, roadmap } of state.roadmaps) {
+    const concept = roadmap.find(item =>
+      item.status !== 'mastered' &&
+      (!item.nextReviewDate || now >= item.nextReviewDate) &&
+      item.keywords.some(kw => matchesKeyword(text, kw)),
+    )
+    if (concept) return { goal, concept }
+  }
+  return undefined
+}
+
+// --- Roadmap management ---
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+// A roadmap by its number in the list (1-based), its goal, or a unique part
+// of its goal; else a message saying why none was picked.
+export function findRoadmap(state: LearningState | undefined, selector: string): Roadmap | string {
+  const roadmaps = state?.roadmaps ?? []
+  const sel = selector.trim()
+  if (!roadmaps.length) return 'No roadmaps yet. Start one with `/roadmap <goal>`.'
+  if (!sel) return 'Name a roadmap by its number or goal: see `/roadmap`.'
+  if (/^\d+$/.test(sel)) {
+    const found = roadmaps[Number(sel) - 1]
+    return found ?? `No roadmap #${sel}: see \`/roadmap\`.`
+  }
+  const exact = roadmaps.find(r => sameName(r.goal, sel))
+  if (exact) return exact
+  const partial = roadmaps.filter(r => r.goal.toLowerCase().includes(sel.toLowerCase()))
+  const [only] = partial
+  if (only && partial.length === 1) return only
+  return partial.length
+    ? `"${sel}" matches ${partial.length} roadmaps; use its number: see \`/roadmap\`.`
+    : `No roadmap matches "${sel}": see \`/roadmap\`.`
+}
+
+export const findRoadmapByGoal = (state: LearningState | undefined, goal: string) =>
+  state?.roadmaps.find(r => sameName(r.goal, goal))
+
+// A regenerated roadmap with the learner's progress kept: a concept of the
+// same name keeps its schedule, and a concept already studied is never
+// dropped, even when the new roadmap leaves it out.
+export function mergeRoadmap(old: Concept[], fresh: Concept[]): Concept[] {
+  const merged = fresh.map(c => {
+    const before = old.find(o => sameName(o.concept, c.concept))
+    return before ? { ...before, concept: c.concept, keywords: c.keywords, stage: c.stage ?? before.stage } : c
+  })
+  const kept = old.filter(o => isStarted(o) && !merged.some(c => sameName(c.concept, o.concept)))
+  return [...merged, ...kept]
 }
 
 // --- Roadmap parsing ---
@@ -76,11 +138,12 @@ export function parseRoadmap(text: string): Concept[] {
   }
   if (!Array.isArray(raw)) return []
   return raw
-    .filter((r): r is { concept: string; keywords: unknown[] } =>
+    .filter((r): r is { concept: string; keywords: unknown[]; stage?: unknown } =>
       !!r && typeof r.concept === 'string' && Array.isArray(r.keywords))
     .map(r => ({
       concept: r.concept,
       keywords: r.keywords.map(k => String(k).toLowerCase()).filter(Boolean),
+      ...(typeof r.stage === 'string' && r.stage.trim() ? { stage: r.stage.trim() } : {}),
       status: 'learning' as const,
       nextReviewDate: 0,
     }))
@@ -124,3 +187,94 @@ const SECRET_PATTERNS: [RegExp, string][] = [
 export function redactSecrets(text: string): string {
   return SECRET_PATTERNS.reduce((t, [pattern, replacement]) => t.replace(pattern, replacement), text)
 }
+
+// --- Quiz parsing ---
+export type Quiz = { question: string; options: string[]; answer: number; why: string }
+
+// A multiple-choice question as the model writes it: {question, options[4], answer (0-3), why}.
+export function parseQuiz(text: string): Quiz | undefined {
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end <= start) return undefined
+  let raw: Record<string, unknown>
+  try {
+    raw = JSON.parse(text.slice(start, end + 1))
+  } catch {
+    return undefined
+  }
+  const { question, options, answer, why } = raw ?? {}
+  if (typeof question !== 'string' || !Array.isArray(options)) return undefined
+  const labels = options.map(o => String(o).trim()).filter(Boolean)
+  // The dialog takes 2-4 distinct labels.
+  if (labels.length < 2 || labels.length > 4 || new Set(labels).size !== labels.length) return undefined
+  if (typeof answer !== 'number' || !Number.isInteger(answer) || answer < 0 || answer >= labels.length) return undefined
+  return { question, options: labels, answer, why: typeof why === 'string' ? why : '' }
+}
+
+// --- Progress ---
+const isStarted = (c: Concept) => c.status === 'mastered' || c.nextReviewDate > 0
+
+function progressBar(done: number, total: number, width = 20) {
+  const filled = total ? Math.round((done / total) * width) : 0
+  return '█'.repeat(filled) + '░'.repeat(width - filled)
+}
+
+function conceptLine(c: Concept, now: number) {
+  if (c.status === 'mastered') return `  ✅ ${c.concept}: mastered`
+  if (!isStarted(c)) return `  ⬜ ${c.concept}: not started`
+  if (c.nextReviewDate <= now) return `  🔁 ${c.concept}: due for review`
+  return `  📅 ${c.concept}: next review ${new Date(c.nextReviewDate).toLocaleDateString()}`
+}
+
+const counts = (roadmap: Concept[], now: number) => {
+  const mastered = roadmap.filter(c => c.status === 'mastered').length
+  const started = roadmap.filter(isStarted).length
+  const due = roadmap.filter(c => c.status !== 'mastered' && isStarted(c) && c.nextReviewDate <= now).length
+  return { mastered, learning: started - mastered, notStarted: roadmap.length - started, due, total: roadmap.length }
+}
+
+export const NO_ROADMAP = 'No roadmap yet. Start one with `/roadmap <goal>`, e.g. `/roadmap Node.js backend`.'
+
+// One roadmap in full: totals, then every concept by stage.
+export function describeProgress({ goal, roadmap }: Roadmap, now: number): string {
+  const n = counts(roadmap, now)
+
+  // Stages in roadmap order; concepts without one fall under "Concepts".
+  const stages = new Map<string, Concept[]>()
+  for (const c of roadmap) {
+    const stage = c.stage ?? 'Concepts'
+    stages.set(stage, [...(stages.get(stage) ?? []), c])
+  }
+
+  const lines = [
+    `🎯 Goal: ${goal}`,
+    `${progressBar(n.mastered, n.total)} ${n.mastered}/${n.total} mastered`,
+    `${n.learning} learning · ${n.notStarted} not started · ${n.due} due for review`,
+  ]
+  let i = 0
+  for (const [stage, concepts] of stages) {
+    i += 1
+    const done = concepts.filter(c => c.status === 'mastered').length
+    lines.push('', `Stage ${i} · ${stage} (${done}/${concepts.length})`, ...concepts.map(c => conceptLine(c, now)))
+  }
+  return lines.join('\n')
+}
+
+// Every roadmap, one line each, and the commands that manage them.
+export function describeRoadmaps(state: LearningState | undefined, now: number): string {
+  if (!state?.roadmaps.length) return NO_ROADMAP
+  return [
+    '📚 Your roadmaps',
+    ...state.roadmaps.map(({ goal, roadmap }, i) => {
+      const n = counts(roadmap, now)
+      return `  ${i + 1}. ${goal}: ${progressBar(n.mastered, n.total, 10)} ${n.mastered}/${n.total} mastered · ${n.due} due`
+    }),
+    '',
+    ROADMAP_HELP,
+  ].join('\n')
+}
+
+export const ROADMAP_HELP = [
+  '`/progress <#>` details one · `/roadmap <goal>` adds one (or updates it, keeping progress)',
+  '`/roadmap update <#>` regenerates one, keeping progress · `/roadmap remove <#>` deletes one',
+].join('\n')

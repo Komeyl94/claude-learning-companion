@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
-import { applyRating, findDueConcept, isSecretPath, matchesKeyword, parseRating, parseRoadmap, redactSecrets, type LearningState } from '../hooks/sm2'
+import {
+  type Concept, type LearningState, applyRating, describeProgress, describeRoadmaps, findDueConcept, findRoadmap,
+  isSecretPath, matchesKeyword, mergeRoadmap, migrateState, parseQuiz, parseRating, parseRoadmap, redactSecrets,
+} from '../hooks/sm2'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -34,17 +37,23 @@ describe('matching', () => {
     expect(matchesKeyword('reroute::x', 'route::')).toBe(false)
   })
 
-  test('only due, unmastered concepts are found', () => {
+  test('only due, unmastered concepts are found, across roadmaps', () => {
     const state: LearningState = {
-      goal: 'g',
       pendingReview: null,
-      roadmap: [
-        { concept: 'Later', keywords: ['express'], status: 'learning', nextReviewDate: 10 * DAY },
-        { concept: 'Done', keywords: ['express'], status: 'mastered', nextReviewDate: 0 },
-        { concept: 'Now', keywords: ['express'], status: 'learning', nextReviewDate: 0 },
+      roadmaps: [
+        {
+          goal: 'Node',
+          roadmap: [
+            { concept: 'Later', keywords: ['express'], status: 'learning', nextReviewDate: 10 * DAY },
+            { concept: 'Done', keywords: ['express'], status: 'mastered', nextReviewDate: 0 },
+          ],
+        },
+        { goal: 'Web', roadmap: [{ concept: 'Now', keywords: ['express'], status: 'learning', nextReviewDate: 0 }] },
       ],
     }
-    expect(findDueConcept(state, 'require("express")', DAY)?.concept).toBe('Now')
+    const due = findDueConcept(state, 'require("express")', DAY)
+    expect(due?.goal).toBe('Web')
+    expect(due?.concept.concept).toBe('Now')
   })
 })
 
@@ -55,10 +64,96 @@ describe('parsing', () => {
     expect(parseRoadmap('no json here')).toEqual([])
   })
 
+  test('roadmap stages are kept when given', () => {
+    expect(parseRoadmap('[{"stage":" Data ","concept":"ORM","keywords":["prisma"]}]')[0]?.stage).toBe('Data')
+  })
+
+  test('quizzes need 2-4 distinct options and a valid answer', () => {
+    const q = parseQuiz('```json\n{"question":"Q?","options":["a","b","c","d"],"answer":2,"why":"w"}\n```')
+    expect(q).toEqual({ question: 'Q?', options: ['a', 'b', 'c', 'd'], answer: 2, why: 'w' })
+    expect(parseQuiz('{"question":"Q?","options":["a","b"],"answer":2}')).toBeUndefined()
+    expect(parseQuiz('{"question":"Q?","options":["a","a"],"answer":0}')).toBeUndefined()
+    expect(parseQuiz('{"question":"Q?","options":["a","b","c","d","e"],"answer":0}')).toBeUndefined()
+  })
+
   test('ratings accept labels and digits typed under Other', () => {
     expect(parseRating('Good')).toBe(4)
     expect(parseRating(' 2 ')).toBe(2)
     expect(parseRating('7')).toBeUndefined()
+  })
+})
+
+const concept = (name: string, extra: Partial<Concept> = {}): Concept =>
+  ({ concept: name, keywords: ['x'], status: 'learning', nextReviewDate: 0, ...extra })
+
+describe('progress', () => {
+  test('groups concepts by stage and counts each state', () => {
+    const text = describeProgress({
+      goal: 'Backend',
+      roadmap: [
+        concept('HTTP', { stage: 'Foundations', status: 'mastered', nextReviewDate: DAY }),
+        concept('Routing', { stage: 'Foundations', nextReviewDate: DAY }),
+        concept('ORM', { stage: 'Data', nextReviewDate: 10 * DAY }),
+        concept('Caching', { stage: 'Data' }),
+      ],
+    }, 2 * DAY)
+    expect(text).toContain('1/4 mastered')
+    expect(text).toContain('2 learning · 1 not started · 1 due for review')
+    expect(text).toContain('Stage 1 · Foundations (1/2)')
+    expect(text).toContain('Stage 2 · Data (0/2)')
+    expect(text).toContain('🔁 Routing: due for review')
+    expect(text).toContain('⬜ Caching: not started')
+  })
+
+  test('lists every roadmap on one line each', () => {
+    const state: LearningState = {
+      pendingReview: null,
+      roadmaps: [
+        { goal: 'Laravel', roadmap: [concept('Routing', { status: 'mastered', nextReviewDate: DAY }), concept('ORM')] },
+        { goal: 'Docker', roadmap: [concept('Images')] },
+      ],
+    }
+    const text = describeRoadmaps(state, 0)
+    expect(text).toContain('1. Laravel: █████░░░░░ 1/2 mastered')
+    expect(text).toContain('2. Docker:')
+  })
+})
+
+describe('roadmaps', () => {
+  const state: LearningState = {
+    pendingReview: null,
+    roadmaps: [
+      { goal: 'Laravel backend', roadmap: [] },
+      { goal: 'Docker', roadmap: [] },
+      { goal: 'Docker Swarm', roadmap: [] },
+    ],
+  }
+
+  test('a 2.0 single roadmap is upgraded to a list', () => {
+    const old = { goal: 'g', roadmap: [concept('A')], pendingReview: { concept: 'A', snippet: 's' } }
+    expect(migrateState(old)).toEqual({ roadmaps: [{ goal: 'g', roadmap: [concept('A')] }], pendingReview: null })
+    expect(migrateState(state)).toBe(state)
+    expect(migrateState(undefined)).toBeUndefined()
+  })
+
+  test('found by number, goal, or a unique part of the goal', () => {
+    expect(findRoadmap(state, '2')).toBe(state.roadmaps[1])
+    expect(findRoadmap(state, 'docker')).toBe(state.roadmaps[1])
+    expect(findRoadmap(state, 'laravel')).toBe(state.roadmaps[0])
+    expect(findRoadmap(state, 'dock')).toContain('matches 2 roadmaps')
+    expect(findRoadmap(state, '9')).toContain('No roadmap #9')
+    expect(findRoadmap(state, 'rust')).toContain('No roadmap matches')
+  })
+
+  test('a merge keeps progress and never drops a studied concept', () => {
+    const studied = concept('Routing', { stage: 'Basics', repetitions: 2, interval: 6, nextReviewDate: 6 * DAY })
+    const old = [studied, concept('Unseen'), concept('Dropped but studied', { nextReviewDate: DAY })]
+    const fresh = [concept('routing', { keywords: ['route::'], stage: 'Foundations' }), concept('Queues')]
+    expect(mergeRoadmap(old, fresh)).toEqual([
+      { ...studied, concept: 'routing', keywords: ['route::'], stage: 'Foundations' },
+      concept('Queues'),
+      concept('Dropped but studied', { nextReviewDate: DAY }),
+    ])
   })
 })
 
