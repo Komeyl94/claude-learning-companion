@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 import { type Concept, type LearningState, isUsefulKeyword } from '../hooks/sm2'
 import {
-  currentStreak, dayOf, dueConcepts, lessonsToday, nextNewConcept, noteSection, notePath, parseShared,
-  ratingOptions, recordLesson, recordStudy, slug, suggestRating, toAnki, toShareJson,
+  currentStreak, dayOf, oneLine, plainText, dueConcepts, lessonsToday, nextNewConcept, noteSection, notePath, parseShared,
+  ratingOptions, recordLesson, recordStudy, shuffleQuiz, slug, suggestRating, toAnki, toShareJson,
 } from '../hooks/study'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -39,6 +39,23 @@ describe('what to study', () => {
   })
 })
 
+describe('quiz', () => {
+  const quiz = { question: 'Q?', options: ['right', 'b', 'c', 'd'], answer: 0, why: 'w' }
+
+  test('shuffling moves the options and keeps the answer on the right one', () => {
+    // Always swap with the first: [right,b,c,d] -> [b,c,d,right]
+    const shuffled = shuffleQuiz(quiz, () => 0)
+    expect(shuffled.options).toEqual(['b', 'c', 'd', 'right'])
+    expect(shuffled.options[shuffled.answer]).toBe('right')
+  })
+
+  test('the right answer lands in every position over many shuffles', () => {
+    const positions = new Set<number>()
+    for (let i = 0; i < 200; i++) positions.add(shuffleQuiz(quiz).answer)
+    expect([...positions].sort()).toEqual([0, 1, 2, 3])
+  })
+})
+
 describe('rating suggestion', () => {
   test('quiz answers suggest a rating, which is offered first', () => {
     expect(suggestRating([])).toBeUndefined()
@@ -72,6 +89,19 @@ describe('streaks', () => {
     expect(lessonsToday(two, NOON)).toBe(2)
     expect(lessonsToday(two, NOON + DAY)).toBe(0)
     expect(recordLesson(two, NOON + DAY).lessonsToday).toBe(1)
+  })
+})
+
+describe('transcript', () => {
+  test('markdown the model adds anyway is removed', () => {
+    expect(plainText('# Project Setup\nArtisan is **the** CLI.\n\n\n**Quick example:**\n```bash\ncomposer create-project laravel/laravel app\n```\nDone.'))
+      .toBe('Project Setup\nArtisan is the CLI.\n\nQuick example:\ncomposer create-project laravel/laravel app\nDone.')
+    for (const code of ['$table->id(); // code_with_underscores', 'def __init__(self, **kwargs):', 'x = 2 ** 3 ** 4'])
+      expect(plainText(code)).toBe(code)
+  })
+
+  test('a multi-line step becomes one line', () => {
+    expect(oneLine('Show an example\nuse App\\Models\\Post;\n\nRoute::get();\r\n')).toBe('Show an example · use App\\Models\\Post; · Route::get();')
   })
 })
 

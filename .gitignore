@@ -6,3 +6,6 @@ tsconfig.json
 
 # Written by `claude plugin eval` on each run
 evals/results/
+
+# Written by tests/e2e/features.tape
+tests/e2e/out/

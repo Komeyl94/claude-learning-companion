@@ -1,59 +1,92 @@
-# Records demo/demo.gif for the README.
+# Records docs/demo.gif and the README screenshots in docs/.
 #
 #   1. Install vhs: https://github.com/charmbracelet/vhs#installation
-#   2. From the repository root: vhs demo/demo.tape
+#   2. From the repository root:
+#        rm -f ~/.claude/plugins/store/learning-companion_inline-*.json
+#        vhs demo/demo.tape
+#        git checkout -- demo/project
 #
-# It runs Claude Code with this checkout as a plugin (--plugin-dir), which keeps
-# its own store: your installed plugin's roadmaps are not touched. Model replies
-# vary in length, so adjust a Sleep if a step is cut short.
+# Claude Code runs with this checkout as a plugin (--plugin-dir), which keeps
+# its own store, so an installed copy's roadmaps are not touched. User
+# settings and MCP servers are left out so the recording shows this plugin
+# alone. Model waits are hidden, so the GIF shows each step without the pause.
 
-Output demo/demo.gif
+Output docs/demo.gif
 
 Set Shell "bash"
 Set FontSize 16
-Set Width 1300
-Set Height 820
-Set Padding 20
+Set Width 1280
+Set Height 800
+Set Padding 24
 Set Theme "Catppuccin Mocha"
-Set TypingSpeed 40ms
+Set TypingSpeed 35ms
 
 Hide
-Type "cd demo/project && claude --plugin-dir ../.." Enter
-Sleep 6s
+Type "for v in $(env | grep -o '^CLAUDE[A-Z_]*'); do unset $v; done; cd demo/project && clear && claude --plugin-dir ../.. --setting-sources project,local --strict-mcp-config --permission-mode acceptEdits" Enter
+Wait+Screen@30s /accept edits/
 Show
+Sleep 1s
 
-# 1. A roadmap for a goal
-Type "/roadmap Laravel backend" Sleep 500ms Enter
-Sleep 45s
-
-# 2. Claude writes code that uses a concept: a lesson follows the turn
-Type "Add a GET /users route to routes/web.php that returns all users as JSON" Sleep 500ms Enter
-Sleep 40s
-
-# 3. Lesson menu: Show an example
-Sleep 4s
-Enter
-Sleep 12s
-
-# 4. Quiz me (third option), then pick the first answer
-Down Down Sleep 1s Enter
-Sleep 12s
-Enter
-Sleep 8s
-
-# 5. Rate it (fourth option), then take the suggested rating
-Down Down Down Sleep 1s Enter
-Sleep 3s
-Enter
-Sleep 4s
-
-# 6. Progress
-Type "/progress" Sleep 500ms Enter
-Sleep 6s
-
-# 7. A side question
-Type "/tutor why return a JSON response instead of a view here?" Sleep 500ms Enter
-Sleep 20s
-
+# A roadmap for a goal
+Type "/roadmap Laravel backend" Sleep 600ms Enter
 Hide
-Ctrl+C Ctrl+C
+Wait+Screen@300s /Keep coding/
+Show
+Sleep 4s
+
+# Claude writes code that uses a concept; the lesson follows the turn
+Type "Add a GET /users route to routes/web.php that returns all users as JSON" Sleep 600ms Enter
+Hide
+Wait+Screen@180s /Do you want to/
+Show
+Sleep 1500ms
+Enter
+Hide
+Wait+Screen@300s /What next/
+Show
+Sleep 5s
+Screenshot docs/lesson.png
+Sleep 1s
+
+# Quiz me
+Down Sleep 400ms Down Sleep 400ms Enter
+Hide
+Sleep 25s
+Show
+Sleep 4s
+Screenshot docs/quiz.png
+Sleep 1s
+Enter
+Hide
+Wait+Screen@60s /What next/
+Show
+Sleep 4s
+
+# Rate it: the quiz result is offered first
+Down Sleep 400ms Down Sleep 400ms Down Sleep 400ms Enter
+Hide
+Wait+Screen@60s /How well do you understand/
+Show
+Sleep 4s
+Screenshot docs/rating.png
+Sleep 1s
+Enter
+Sleep 4s
+
+# Progress by stage
+Type "/progress" Sleep 600ms Enter
+Hide
+Wait+Screen@30s /Stage 1/
+Show
+Sleep 5s
+Screenshot docs/progress.png
+Sleep 1s
+
+# A side question about the session
+Type "/tutor why return JSON instead of a Blade view here?" Sleep 600ms Enter
+Hide
+Sleep 40s
+Show
+Sleep 6s
+Screenshot docs/tutor.png
+Sleep 1s

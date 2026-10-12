@@ -38,51 +38,28 @@ before you would forget it.
 
 ## 🎬 What it looks like
 
-Claude adds a route while you work. When the turn ends:
+<p align="center">
+  <img src="docs/demo.gif" alt="Learning Companion in Claude Code: a roadmap, a lesson after Claude adds a route, a quiz, the suggested rating, progress and a tutor answer" width="900">
+</p>
 
-```text
-💡 Routing: Laravel's Route::get() maps an HTTP GET request for a URL to the code that answers it.
-   Here, /users is sent to UserController@index, so the controller stays free of URL details.
-   Grouping routes with ->middleware('auth') applies the same check to all of them at once.
+Claude adds a route while you work. When the turn ends, a lesson explains the concept **in that code**,
+and you choose what comes next:
 
-┌ Lesson ──────────────────────────────────────────────────────────────┐
-│ What next? (Or type a question under Other.)                        │
-│  ❯ Show an example                                                  │
-│    Go deeper                                                        │
-│    Quiz me                                                          │
-│    Rate it                                                          │
-└──────────────────────────────────────────────────────────────────────┘
-```
+<table>
+  <tr>
+    <td width="50%"><img src="docs/lesson.png" alt="The lesson menu after an explanation of Routing Basics"><br><sub><b>Lesson.</b> Explanation tied to your code, then example, deeper, quiz or your own question.</sub></td>
+    <td width="50%"><img src="docs/quiz.png" alt="A multiple-choice quiz question about the route Claude wrote"><br><sub><b>Quiz.</b> One multiple-choice question about the code you just saw.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/rating.png" alt="The rating dialog with Good offered first, as the quiz suggests"><br><sub><b>Rating.</b> Your quiz result suggests the rating; SM-2 schedules the next review.</sub></td>
+    <td width="50%"><img src="docs/progress.png" alt="/progress showing five stages of a Laravel roadmap"><br><sub><b>Progress.</b> Every concept by stage, and a streak on the status line.</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/tutor.png" alt="/tutor answering why the route returns JSON instead of a Blade view"><br><sub><b>Tutor.</b> <code>/tutor</code> answers a side question using what happened in your session.</sub></td>
+  </tr>
+</table>
 
-Pick **Quiz me** and answer a multiple-choice question about that code. Pick **Rate it** and the next
-review is scheduled, with your quiz result suggesting the rating. The status line keeps score:
-
-```text
-📚 4/20 mastered · 1 due (/practice) · 🔥 5-day streak
-```
-
-Check where you stand at any time:
-
-```text
-> /progress
-
-🎯 Goal: Laravel backend
-████░░░░░░░░░░░░░░░░ 4/20 mastered
-3 learning · 13 not started · 1 due for review
-
-Stage 1 · Foundations (2/4)
-  ✅ Routing: mastered
-  ✅ Controllers and Requests: mastered
-  🔁 Service Container: due for review
-  ⬜ Views and Templating: not started
-
-Stage 2 · Data (2/4)
-  ✅ Database Migrations: mastered
-  ✅ Eloquent ORM: mastered
-  📅 Eloquent Relationships: next review 10/19/2026
-  ⬜ Query Builder: not started
-  …
-```
+<sub>Recorded with <a href="https://github.com/charmbracelet/vhs">vhs</a> from <a href="demo/demo.tape"><code>demo/demo.tape</code></a>, in a real Claude Code session.</sub>
 
 ## 🚀 Quick start
 
@@ -269,6 +246,10 @@ claude plugin eval . --runs 1    # grade roadmap and tutor quality with a model 
 CI runs `validate` and `test` on every push and pull request. Evals call a model, so run them locally
 when you change a prompt.
 
+Dialogs and the transcript only show up in a real terminal. [`tests/e2e/features.tape`](tests/e2e/features.tape)
+drives a real Claude Code session with [vhs](https://github.com/charmbracelet/vhs) through every feature and
+saves a screenshot of each step to `tests/e2e/out/`. Run it before a release.
+
 | Path | Role |
 | --- | --- |
 | [`hooks/register.ts`](hooks/register.ts) | Hooks: commands, concept spotting (`tool.call`), lessons (`turn.complete`), settings |
@@ -276,7 +257,8 @@ when you change a prompt.
 | [`hooks/study.ts`](hooks/study.ts) | Pure logic: what to study next, rating suggestions, streaks, notes, export |
 | [`tests/`](tests) | Suites for `claude plugin test` |
 | [`evals/`](evals) | Cases for `claude plugin eval` |
-| [`demo/`](demo) | [vhs](https://github.com/charmbracelet/vhs) script that records the demo GIF |
+| [`demo/`](demo) | [vhs](https://github.com/charmbracelet/vhs) script that records `docs/demo.gif` and the screenshots |
+| [`docs/`](docs) | The demo GIF and screenshots used in this README |
 
 Keep pure logic in `sm2.ts` and `study.ts` so it can be tested without the engine, and add a test with
 each change.

@@ -1,6 +1,6 @@
 // Pure study helpers: what to study next, streaks, notes, export.
 // No `$`, so tests can call them directly.
-import { type Activity, type Concept, type LearningState, type Roadmap, RATINGS, isStarted, parseRoadmap } from './sm2'
+import { type Activity, type Concept, type LearningState, type Quiz, type Roadmap, RATINGS, isStarted, parseRoadmap } from './sm2'
 
 // --- What to study ---
 // Concepts already studied whose review is due, across every roadmap.
@@ -13,6 +13,17 @@ export function dueConcepts(state: LearningState, now: number): { goal: string; 
 
 // The first concept in roadmap order that was never studied.
 export const nextNewConcept = (roadmap: Roadmap) => roadmap.roadmap.find(c => !isStarted(c))
+
+// --- Quiz ---
+// The options in random order, the answer following its option.
+export function shuffleQuiz(quiz: Quiz, random: () => number = Math.random): Quiz {
+  const order = quiz.options.map((_, i) => i)
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[order[i], order[j]] = [order[j]!, order[i]!]
+  }
+  return { ...quiz, options: order.map(i => quiz.options[i]!), answer: order.indexOf(quiz.answer) }
+}
 
 // --- Rating suggestion ---
 // A quiz is evidence: any wrong answer suggests "Hard", all right "Good".
@@ -60,6 +71,24 @@ export const lessonsToday = (activity: Activity | undefined, now: number) =>
 export function recordLesson(activity: Activity | undefined, now: number): Activity {
   return { lastDay: '', streak: 0, ...activity, lessonsDay: dayOf(now), lessonsToday: lessonsToday(activity, now) + 1 }
 }
+
+// --- Transcript ---
+// `$.ui.log` draws one line: a line break would show as "�", so lines are
+// joined with " · " there. The dialog and the notes keep the full text.
+export const oneLine = (text: string) =>
+  text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).join(' · ')
+
+// Lesson text as the prompt asks for it: plain, even when the model adds
+// markdown headings, bold markers or code fences anyway. Code is left alone:
+// `__init__`, `2 ** 3 ** 4` and `**kwargs` keep their asterisks and underscores.
+export const plainText = (text: string) =>
+  text
+    .split(/\r?\n/)
+    .filter(l => !/^\s*```/.test(l))
+    .map(l => l.replace(/^\s*#{1,6}\s+/, '').replace(/\*\*(\S(?:[^*\n]*\S)?)\*\*/g, '$1'))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
 
 // --- Notes ---
 export const slug = (s: string) =>

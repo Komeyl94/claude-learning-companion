@@ -26,10 +26,13 @@ import {
   nextNewConcept,
   noteSection,
   notePath,
+  oneLine,
   parseShared,
+  plainText,
   ratingOptions,
   recordLesson,
   recordStudy,
+  shuffleQuiz,
   slug,
   suggestRating,
   toAnki,
@@ -311,7 +314,7 @@ The concept is "${concept.concept}".
 ${task}
 Plain text, no markdown headings; short code lines are fine.`,
   })
-  return reply.isAnswered ? reply.text.trim() : undefined
+  return reply.isAnswered ? plainText(reply.text) : undefined
 }
 
 const LESSON = {
@@ -336,7 +339,9 @@ Write ONE multiple-choice question that checks real understanding of "${concept.
 Exactly 4 options, each under 60 characters, all different. Only one is correct.
 Return ONLY raw JSON: {"question": "...", "options": ["...", "...", "...", "..."], "answer": <index 0-3 of the correct option>, "why": "one sentence on why it is correct"}`,
   })
-  const q = reply.isAnswered ? parseQuiz(reply.text) : undefined
+  // Shuffled: models tend to put the right answer first.
+  const parsed = reply.isAnswered ? parseQuiz(reply.text) : undefined
+  const q = parsed && shuffleQuiz(parsed)
   if (!q) return { text: 'Quiz unavailable this time.', correct: undefined }
   const picked = await $.ui.ask(q.question, { header: 'Quiz', options: q.options })
   const right = q.options[q.answer]
@@ -372,19 +377,26 @@ async function lesson($: $, goal: string, concept: Concept, snippet: string | un
   const explanation = await teach($, goal, concept, snippet, explain, 400)
   const steps: string[] = []
   const quizResults: boolean[] = []
-  // Each step goes in the question itself, where it is sure to be seen, and
-  // in the transcript, where it stays after the question closes.
+  // Each step is shown in the dialog, where it is sure to be seen, then
+  // written to the transcript once the dialog closes, so it stays afterwards
+  // without being on screen twice.
   let shown = explanation ? `💡 ${concept.concept}: ${explanation}` : `Explanation unavailable for "${concept.concept}".`
   if (heading) shown = `${heading}\n${shown}`
   if (explanation) steps.push(explanation)
-  $.ui.log(shown)
+  let unlogged: string | undefined = shown
+  const flush = () => {
+    if (unlogged) $.ui.log(oneLine(unlogged))
+    unlogged = undefined
+  }
 
   try {
     for (let step = 0; step < MAX_LESSON_STEPS; step++) {
-      const choice = await $.ui.ask(`${shown}\n\nWhat next? (Or type a question under Other.)`, {
-        header: 'Lesson',
-        options: Object.values(LESSON),
-      })
+      const choice = await $.ui
+        .ask(`${shown}\n\nWhat next? (Pick "Type something" to ask your own question.)`, {
+          header: 'Lesson',
+          options: Object.values(LESSON),
+        })
+        .finally(flush)
       if (choice === LESSON.done) break
       let text: string | undefined
       if (choice === LESSON.quiz) {
@@ -402,13 +414,15 @@ async function lesson($: $, goal: string, concept: Concept, snippet: string | un
       const label = Object.values(LESSON).includes(choice) ? choice : `❓ ${choice}`
       shown = text ? `${label}\n${text}` : `${label}: unavailable this time.`
       if (text) steps.push(`### ${label}\n\n${text}`)
-      $.ui.log(shown)
+      unlogged = shown
     }
+    flush()
 
     const suggested = suggestRating(quizResults)
     const answer = await $.ui.ask(
       `How well do you understand "${concept.concept}" now?${suggested ? ` (Your quiz suggests: ${suggested}.)` : ''}`,
-      { header: 'Review', options: ratingOptions(suggested) },
+      // Without a quiz, "Good" goes first, as in Anki: Enter alone never rates "Forgot it".
+      { header: 'Review', options: ratingOptions(suggested ?? 'Good') },
     )
     const quality = parseRating(answer)
     if (quality === undefined) return 'skipped'
@@ -429,7 +443,10 @@ async function lesson($: $, goal: string, concept: Concept, snippet: string | un
     )
     return 'rated'
   } catch {
-    return 'stopped' // dismissed, or no one to ask (-p)
+    // Dismissed, "Chat about this" (which closes the dialog the same way), or
+    // no one to ask (-p). Point to where the conversation can go on.
+    $.ui.log(`Lesson on "${concept.concept}" closed. To talk it through: /tutor <your question>`)
+    return 'stopped'
   } finally {
     await saveNotes($, goal, concept, steps)
   }
@@ -496,7 +513,7 @@ async function learnCommand($: $, selector: string): Promise<string> {
   const outcome = await lesson($, pick.goal, pick.concept, undefined, `🆕 New concept from "${pick.goal}"`)
   return outcome === 'rated'
     ? `🆕 Learned "${pick.concept.concept}". \`/learn\` again for the next one.`
-    : `Stopped "${pick.concept.concept}". \`/learn\` starts it again.`
+    : `Stopped "${pick.concept.concept}". \`/learn\` starts it again, and \`/tutor <question>\` talks it through.`
 }
 
 // A side question, answered over the session's own conversation as /btw is.

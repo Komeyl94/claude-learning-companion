@@ -89,8 +89,16 @@ test('/learn stops when the lesson is closed, leaving the concept new', async ($
   files(on)
   learner(on, {})
 
+  const logs: string[] = []
+  on('ui.log', (_$, e) => {
+    logs.push(e.text)
+    return { value: undefined }
+  })
+
   const out = await $.command.run(run('learn'))
   expect(out.text).toContain('Stopped "Routing"')
+  expect(out.text).toContain('/tutor')
+  expect(logs.at(-1)).toContain('closed. To talk it through: /tutor')
   const progress = await $.command.run(run('progress'))
   expect(progress.text).toContain('⬜ Routing: not started')
 })
@@ -114,6 +122,44 @@ test('/practice goes through every due concept', async ($, on) => {
 
   const again = await $.command.run(run('practice'))
   expect(again.text).toContain('Nothing due')
+})
+
+test('without a quiz, Good is offered first', async ($, on) => {
+  mock.store(on, store([fresh('Routing')]))
+  model(on)
+  files(on)
+  const asked = learner(on, { Lesson: ['Rate it'], Review: ['Good'] })
+
+  await $.command.run(run('learn'))
+  const review = asked.find(a => a.header === 'Review')!
+  expect(review.options).toEqual(['Good', 'Forgot it', 'Hard', 'Easy'])
+  expect(review.question).not.toContain('suggests')
+})
+
+test('each step reaches the transcript only after its dialog closes', async ($, on) => {
+  mock.store(on, store([fresh('Routing')]))
+  model(on)
+  files(on)
+  const events: string[] = []
+  on('ui.log', (_$, e) => {
+    events.push(`log: ${e.text.split(' · ')[0]}`)
+    return { value: undefined }
+  })
+  on('tool.call', { tool: 'AskUserQuestion' }, (_$, e) => {
+    const [q] = e.questions
+    events.push(`ask: ${q!.header}`)
+    const label = q!.header === 'Lesson' ? (events.filter(x => x === 'ask: Lesson').length === 1 ? 'Go deeper' : 'Rate it') : 'Good'
+    return { result: { questions: e.questions, answers: { [q!.question]: label } } }
+  })
+
+  await $.command.run(run('learn'))
+  expect(events).toEqual([
+    'ask: Lesson',
+    'log: 🆕 New concept from "Laravel"',
+    'ask: Lesson',
+    'log: Go deeper',
+    'ask: Review',
+  ])
 })
 
 test('notes are off when the notes folder is empty', { options: { notesDir: '' } }, async ($, on) => {
