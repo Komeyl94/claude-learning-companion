@@ -84,11 +84,17 @@ Or from inside a Claude Code session:
 sessions; install with **+** → **Plugins** → **Add plugin** or the commands above). Cloud sessions,
 including Claude Code on the web (claude.ai/code), don't load plugins, so it doesn't run there.
 
-Start a session and give it a goal:
+Start a session and give it a goal, in any domain. For example:
 
 ```text
-/companion-roadmap Laravel backend
+/companion-roadmap React frontend with TypeScript
+/companion-roadmap Python data analysis with pandas
+/companion-roadmap Rust systems programming
+/companion-roadmap Kubernetes for deploying web apps
+/companion-roadmap Unity game development in C#
 ```
+
+Pick one to start; you can add more roadmaps later.
 
 That's it. Keep working as usual: lessons show up when Claude touches a concept that is due.
 Want to study right now? `/companion-learn` starts the next concept, and `/companion-practice` goes through what is due.
@@ -156,7 +162,7 @@ A roadmap is named by its number in `/companion-roadmap`, its goal, or a unique 
 
 <br>
 
-- **Several roadmaps.** Learning Laravel and Docker at the same time? Add both. Concepts are spotted from
+- **Several roadmaps.** Learning React and Kubernetes at the same time? Add both. Concepts are spotted from
   every roadmap, and the status line counts them all.
 - **Updates keep progress.** A concept with the same name keeps its review schedule and gets the new
   keywords. A concept you have already studied is never dropped, even when the new roadmap leaves it out.
