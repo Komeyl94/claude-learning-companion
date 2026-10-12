@@ -65,10 +65,24 @@ and you choose what comes next:
 
 **Requires** [Claude Code](https://claude.com/claude-code) 2.1.288 or later (function-hook plugins).
 
+From your shell:
+
 ```bash
 claude plugin marketplace add Komeyl94/claude-learning-companion
 claude plugin install learning-companion@learning-companion
 ```
+
+Or from inside a Claude Code session:
+
+```text
+/plugin marketplace add Komeyl94/claude-learning-companion
+/plugin install learning-companion@learning-companion
+/reload-plugins
+```
+
+**Where it runs:** the terminal CLI, IDE extensions, and the Claude Desktop **Code** tab (local and SSH
+sessions; install with **+** → **Plugins** → **Add plugin** or the commands above). Cloud sessions,
+including Claude Code on the web (claude.ai/code), don't load plugins, so it doesn't run there.
 
 Start a session and give it a goal:
 
