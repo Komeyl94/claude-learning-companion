@@ -29,9 +29,9 @@ before you would forget it.
 - 🎯 **A real roadmap.** 12–20 concepts in ordered stages, from fundamentals to production.
 - 👀 **Spotted in context.** Concepts are detected in what Claude writes or runs, not in a separate course.
 - 🧠 **Lessons, not one-liners.** Explanation, examples, a deeper dive, a quiz, or your own question.
-- 🔁 **Spaced repetition.** [SM-2](https://en.wikipedia.org/wiki/SuperMemo#Description_of_SM-2_algorithm), the algorithm behind Anki, schedules each review. `/practice` catches up on everything due.
-- 🆕 **Learn on demand.** `/learn` teaches the next concept on your roadmap, no code needed.
-- 🎓 **A tutor on the side.** `/tutor` answers questions about the current session, even mid-turn.
+- 🔁 **Spaced repetition.** [SM-2](https://en.wikipedia.org/wiki/SuperMemo#Description_of_SM-2_algorithm), the algorithm behind Anki, schedules each review. `/companion-practice` catches up on everything due.
+- 🆕 **Learn on demand.** `/companion-learn` teaches the next concept on your roadmap, no code needed.
+- 🎓 **A tutor on the side.** `/companion-tutor` answers questions about the current session, even mid-turn.
 - 📝 **Notes you keep.** Every lesson is saved as Markdown, one file per concept.
 - 📈 **Visible progress.** Per-stage progress bars, a daily streak, and several roadmaps at once.
 - 📤 **Share and export.** Hand a roadmap to a teammate, or export it as Anki cards.
@@ -52,10 +52,10 @@ and you choose what comes next:
   </tr>
   <tr>
     <td width="50%"><img src="docs/rating.png" alt="The rating dialog with Good offered first, as the quiz suggests"><br><sub><b>Rating.</b> Your quiz result suggests the rating; SM-2 schedules the next review.</sub></td>
-    <td width="50%"><img src="docs/progress.png" alt="/progress showing five stages of a Laravel roadmap"><br><sub><b>Progress.</b> Every concept by stage, and a streak on the status line.</sub></td>
+    <td width="50%"><img src="docs/progress.png" alt="/companion-progress showing five stages of a Laravel roadmap"><br><sub><b>Progress.</b> Every concept by stage, and a streak on the status line.</sub></td>
   </tr>
   <tr>
-    <td colspan="2"><img src="docs/tutor.png" alt="/tutor answering why the route returns JSON instead of a Blade view"><br><sub><b>Tutor.</b> <code>/tutor</code> answers a side question using what happened in your session.</sub></td>
+    <td colspan="2"><img src="docs/tutor.png" alt="/companion-tutor answering why the route returns JSON instead of a Blade view"><br><sub><b>Tutor.</b> <code>/companion-tutor</code> answers a side question using what happened in your session.</sub></td>
   </tr>
 </table>
 
@@ -87,17 +87,17 @@ including Claude Code on the web (claude.ai/code), don't load plugins, so it doe
 Start a session and give it a goal:
 
 ```text
-/roadmap Laravel backend
+/companion-roadmap Laravel backend
 ```
 
 That's it. Keep working as usual: lessons show up when Claude touches a concept that is due.
-Want to study right now? `/learn` starts the next concept, and `/practice` goes through what is due.
+Want to study right now? `/companion-learn` starts the next concept, and `/companion-practice` goes through what is due.
 
 ## 🧭 How it works
 
 ```mermaid
 flowchart LR
-    A["/roadmap goal"] --> B["Roadmap<br/>12-20 concepts in stages,<br/>each with code keywords"]
+    A["/companion-roadmap goal"] --> B["Roadmap<br/>12-20 concepts in stages,<br/>each with code keywords"]
     B --> C{"Claude writes<br/>or runs code"}
     C -->|"keyword of a due<br/>concept matches"| D["💡 Spotted"]
     D -->|"turn ends"| E["Lesson<br/>example · deeper · quiz · ask"]
@@ -126,26 +126,30 @@ flowchart LR
    suggested rating is offered first: Good when every answer was right, Hard otherwise.
 5. **Notes.** The lesson is appended to `~/learning-notes/<roadmap>/<concept>.md`, so you can reread it later.
 
-Concepts that never come up in your code are not left behind: `/learn` teaches them in roadmap order,
-and `/practice` reviews whatever is due.
+Concepts that never come up in your code are not left behind: `/companion-learn` teaches them in roadmap order,
+and `/companion-practice` reviews whatever is due.
 
 ## ⌨️ Commands
 
+Every command starts with `companion-` so it never clashes with another plugin or skill. The short name
+works too (`/learn`, `/practice`, `/progress`, `/roadmap`, `/tutor`), unless something else already uses it.
+For example, with the `learn` skill installed, `/learn` runs that skill and `/companion-learn` runs this plugin.
+
 | Command | What it does |
 | --- | --- |
-| `/roadmap <goal>` | Builds a roadmap. For a goal you already have, updates it instead |
-| `/learn [#\|name]` | Teaches the next concept you have not started yet |
-| `/practice [#\|name]` | Goes through every concept due for review, one lesson after another |
-| `/progress [#\|name]` | Every roadmap in full, or just one, by stage |
-| `/tutor <question>` | Asks a side question at any time, even while Claude is working |
-| `/roadmap` | Lists your roadmaps, one line each, with progress and due reviews |
-| `/roadmap update <#\|name>` | Regenerates a roadmap and **keeps your progress** |
-| `/roadmap remove <#\|name>` | Deletes a roadmap and its progress, after you confirm |
-| `/roadmap export <#\|name> [anki]` | Writes the roadmap to a file: JSON to share, or Anki cards |
-| `/roadmap import <file>` | Adds a shared roadmap, or merges it into yours for the same goal |
+| `/companion-roadmap <goal>` | Builds a roadmap. For a goal you already have, updates it instead |
+| `/companion-learn [#\|name]` | Teaches the next concept you have not started yet |
+| `/companion-practice [#\|name]` | Goes through every concept due for review, one lesson after another |
+| `/companion-progress [#\|name]` | Every roadmap in full, or just one, by stage |
+| `/companion-tutor <question>` | Asks a side question at any time, even while Claude is working |
+| `/companion-roadmap` | Lists your roadmaps, one line each, with progress and due reviews |
+| `/companion-roadmap update <#\|name>` | Regenerates a roadmap and **keeps your progress** |
+| `/companion-roadmap remove <#\|name>` | Deletes a roadmap and its progress, after you confirm |
+| `/companion-roadmap export <#\|name> [anki]` | Writes the roadmap to a file: JSON to share, or Anki cards |
+| `/companion-roadmap import <file>` | Adds a shared roadmap, or merges it into yours for the same goal |
 
-A roadmap is named by its number in `/roadmap`, its goal, or a unique part of the goal: `/progress 2`,
-`/roadmap update docker`.
+A roadmap is named by its number in `/companion-roadmap`, its goal, or a unique part of the goal: `/companion-progress 2`,
+`/companion-roadmap update docker`.
 
 <details>
 <summary><b>More about multiple roadmaps, updates, sharing and the tutor</b></summary>
@@ -156,14 +160,14 @@ A roadmap is named by its number in `/roadmap`, its goal, or a unique part of th
   every roadmap, and the status line counts them all.
 - **Updates keep progress.** A concept with the same name keeps its review schedule and gets the new
   keywords. A concept you have already studied is never dropped, even when the new roadmap leaves it out.
-- **Built for your stack.** `/roadmap` reads the dependency manifest in your project (`package.json`,
+- **Built for your stack.** `/companion-roadmap` reads the dependency manifest in your project (`package.json`,
   `composer.json`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, `pom.xml`,
   `build.gradle`), so keywords match the libraries you actually use.
-- **Share with a team.** `/roadmap export 1` writes `<goal>.roadmap.json` without your progress.
-  Teammates run `/roadmap import <file>` to start from the same roadmap.
-- **Anki.** `/roadmap export 1 anki` writes `<goal>.anki.txt`, one card per concept with a short
+- **Share with a team.** `/companion-roadmap export 1` writes `<goal>.roadmap.json` without your progress.
+  Teammates run `/companion-roadmap import <file>` to start from the same roadmap.
+- **Anki.** `/companion-roadmap export 1 anki` writes `<goal>.anki.txt`, one card per concept with a short
   definition on the back. In Anki, use File → Import.
-- **`/tutor` sees your session.** Like `/btw`, it answers over the current conversation, so "why did Claude
+- **`/companion-tutor` sees your session.** Like `/btw`, it answers over the current conversation, so "why did Claude
   use a job here?" just works. It never uses tools or changes anything. In a fresh session it answers
   without that context.
 
@@ -176,8 +180,8 @@ Change them in `/config`, under Learning Companion.
 | Setting | Default | What it does |
 | --- | --- | --- |
 | Lesson model | `haiku` | Model for roadmaps, lessons and quizzes: `haiku`, `sonnet` or `opus` |
-| Lessons while you work | on | Off: no automatic lessons, only `/learn` and `/practice` |
-| Automatic lessons per day | `5` | Cap on automatic lessons; `0` for no limit. `/learn` and `/practice` are never capped |
+| Lessons while you work | on | Off: no automatic lessons, only `/companion-learn` and `/companion-practice` |
+| Automatic lessons per day | `5` | Cap on automatic lessons; `0` for no limit. `/companion-learn` and `/companion-practice` are never capped |
 | Notes folder | `~/learning-notes` | Where lessons are saved as Markdown, including any code they quote; empty to turn notes off |
 
 ## 🔒 Privacy
@@ -193,7 +197,7 @@ Change them in `/config`, under Learning Companion.
   To turn notes off, clear the Notes folder setting in `/config`.
 - **Local state.** Roadmaps and review schedules live in the plugin's own store under
   `~/.claude/plugins/store/`.
-- **Project manifests, not code.** `/roadmap` reads only dependency manifests, redacted the same way,
+- **Project manifests, not code.** `/companion-roadmap` reads only dependency manifests, redacted the same way,
   and only to pick keywords.
 
 ## ❓ FAQ
@@ -204,7 +208,7 @@ Change them in `/config`, under Learning Companion.
 <br>
 
 It uses your Claude Code session, so it counts toward the usage you already have. Roadmaps and lessons
-run on Haiku to keep that small. `/tutor` reuses your session's cached conversation.
+run on Haiku to keep that small. `/companion-tutor` reuses your session's cached conversation.
 </details>
 
 <details>
@@ -215,7 +219,7 @@ run on Haiku to keep that small. `/tutor` reuses your session's cached conversat
 No. At most one concept is picked up per turn, only concepts that are due for review are spotted, the
 lesson waits until Claude has finished, and there are at most 5 automatic lessons a day (change it in
 `/config`). Close the dialog at any time to skip it, or turn automatic lessons off and study only with
-`/learn` and `/practice`.
+`/companion-learn` and `/companion-practice`.
 </details>
 
 <details>
@@ -240,7 +244,7 @@ Commands work. Lessons need someone to answer, so they are skipped.
 
 <br>
 
-No. A 2.0 roadmap is upgraded on load. Run `/roadmap update 1` to grow it to a full roadmap while keeping
+No. A 2.0 roadmap is upgraded on load. Run `/companion-roadmap update 1` to grow it to a full roadmap while keeping
 your review history.
 </details>
 
@@ -279,7 +283,8 @@ each change.
 
 **Releasing.** Bump `version` in `.claude-plugin/plugin.json` and `package.json`, add a section to
 [`CHANGELOG.md`](CHANGELOG.md), then tag `vX.Y.Z` and publish a GitHub release with that section as its notes.
-Installs follow `main`, so a push reaches users on their next `claude plugin marketplace update`.
+Claude Code keeps installed plugins by version, so a change to `hooks/` or `plugin.json` reaches users
+only after the version goes up and they run the update commands in the changelog.
 
 ## 📄 License
 

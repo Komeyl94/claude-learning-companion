@@ -97,8 +97,8 @@ test('/learn stops when the lesson is closed, leaving the concept new', async ($
 
   const out = await $.command.run(run('learn'))
   expect(out.text).toContain('Stopped "Routing"')
-  expect(out.text).toContain('/tutor')
-  expect(logs.at(-1)).toContain('closed. To talk it through: /tutor')
+  expect(out.text).toContain('/companion-tutor')
+  expect(logs.at(-1)).toContain('closed. To talk it through: /companion-tutor')
   const progress = await $.command.run(run('progress'))
   expect(progress.text).toContain('⬜ Routing: not started')
 })

@@ -84,7 +84,7 @@ function showStatus($: $, state: LearningState | undefined) {
   const streak = currentStreak(state.activity, now)
   const parts = [
     `📚 ${mastered}/${concepts.length} mastered`,
-    due ? `${due} due (/practice)` : '',
+    due ? `${due} due (/companion-practice)` : '',
     streak ? `🔥 ${streak}-day streak` : '',
     state.pendingReview ? `💡 ${state.pendingReview.concept} (lesson at end of turn)` : '',
   ]
@@ -180,7 +180,7 @@ async function addRoadmap($: $, incoming: Roadmap): Promise<string> {
     '',
     describeProgress(roadmap, Date.now()),
     '',
-    'Keep coding: concepts are spotted as Claude uses them. `/learn` starts the next one now; `/tutor <question>` asks on the side.',
+    'Keep coding: concepts are spotted as Claude uses them. `/companion-learn` starts the next one now; `/companion-tutor <question>` asks on the side.',
   ].join('\n')
 }
 
@@ -227,7 +227,7 @@ Return ONLY a raw JSON object mapping each concept, spelled exactly as given, to
   }
 }
 
-// `/roadmap export <#|name> [json|anki]`: a file in the working directory.
+// `/companion-roadmap export <#|name> [json|anki]`: a file in the working directory.
 async function exportRoadmap($: $, args: string): Promise<string> {
   const words = args.trim().split(/\s+/).filter(Boolean)
   const last = words.at(-1)?.toLowerCase()
@@ -242,16 +242,16 @@ async function exportRoadmap($: $, args: string): Promise<string> {
   }
   const path = `${slug(found.goal)}.roadmap.json`
   await $.fs.write(path, toShareJson(found))
-  return `📤 Wrote "${found.goal}" to ${path}, without your progress. Share it; others add it with \`/roadmap import ${path}\`.`
+  return `📤 Wrote "${found.goal}" to ${path}, without your progress. Share it; others add it with \`/companion-roadmap import ${path}\`.`
 }
 
-// `/roadmap import <file>`: a shared roadmap, merged into one of the same goal.
+// `/companion-roadmap import <file>`: a shared roadmap, merged into one of the same goal.
 async function importRoadmap($: $, path: string): Promise<string> {
-  if (!path) return 'Name the file: `/roadmap import laravel-backend.roadmap.json`.'
+  if (!path) return 'Name the file: `/companion-roadmap import laravel-backend.roadmap.json`.'
   const text = await $.fs.read(path).catch(() => undefined)
   if (typeof text !== 'string') return `❌ Could not read ${path}.`
   const shared = parseShared(text)
-  if (!shared) return `❌ ${path} is not a shared roadmap (made with \`/roadmap export\`).`
+  if (!shared) return `❌ ${path} is not a shared roadmap (made with \`/companion-roadmap export\`).`
   return addRoadmap($, shared)
 }
 
@@ -266,7 +266,7 @@ async function roadmapCommand($: $, args: string): Promise<string> {
       return ROADMAP_HELP
     case 'new':
     case 'add':
-      return target ? generateRoadmap($, target) : 'Name a goal: `/roadmap new Docker`.'
+      return target ? generateRoadmap($, target) : 'Name a goal: `/companion-roadmap new Docker`.'
     case 'update': {
       const found = findRoadmap(await loadState($), target)
       return typeof found === 'string' ? found : generateRoadmap($, found.goal)
@@ -445,7 +445,7 @@ async function lesson($: $, goal: string, concept: Concept, snippet: string | un
   } catch {
     // Dismissed, "Chat about this" (which closes the dialog the same way), or
     // no one to ask (-p). Point to where the conversation can go on.
-    $.ui.log(`Lesson on "${concept.concept}" closed. To talk it through: /tutor <your question>`)
+    $.ui.log(`Lesson on "${concept.concept}" closed. To talk it through: /companion-tutor <your question>`)
     return 'stopped'
   } finally {
     await saveNotes($, goal, concept, steps)
@@ -465,7 +465,7 @@ async function spottedLesson($: $, state: LearningState) {
   if (concept) await lesson($, pending.goal, concept, pending.snippet)
 }
 
-// `/practice [#|name]`: every due concept, one lesson after another.
+// `/companion-practice [#|name]`: every due concept, one lesson after another.
 async function practiceCommand($: $, selector: string): Promise<string> {
   const state = await loadState($)
   if (!state?.roadmaps.length) return NO_ROADMAP
@@ -485,7 +485,7 @@ async function practiceCommand($: $, selector: string): Promise<string> {
     return [
       '✅ Nothing due for review.',
       next ? `Next: "${next.concept}" on ${new Date(next.nextReviewDate).toLocaleDateString()}.` : '',
-      'Start something new with `/learn`.',
+      'Start something new with `/companion-learn`.',
     ].filter(Boolean).join(' ')
   }
   let rated = 0
@@ -495,10 +495,10 @@ async function practiceCommand($: $, selector: string): Promise<string> {
     if (outcome === 'rated') rated += 1
   }
   const left = due.length - rated
-  return `🔁 Reviewed ${rated} of ${due.length}.${left ? ` ${left} still due: \`/practice\` picks up where you left off.` : ' All caught up.'}`
+  return `🔁 Reviewed ${rated} of ${due.length}.${left ? ` ${left} still due: \`/companion-practice\` picks up where you left off.` : ' All caught up.'}`
 }
 
-// `/learn [#|name]`: the next concept never studied, in roadmap order.
+// `/companion-learn [#|name]`: the next concept never studied, in roadmap order.
 async function learnCommand($: $, selector: string): Promise<string> {
   const state = await loadState($)
   if (!state?.roadmaps.length) return NO_ROADMAP
@@ -509,11 +509,11 @@ async function learnCommand($: $, selector: string): Promise<string> {
     roadmaps = [found]
   }
   const pick = roadmaps.map(r => ({ goal: r.goal, concept: nextNewConcept(r) })).find(p => p.concept)
-  if (!pick?.concept) return '🎉 Every concept has been started. `/practice` keeps them fresh.'
+  if (!pick?.concept) return '🎉 Every concept has been started. `/companion-practice` keeps them fresh.'
   const outcome = await lesson($, pick.goal, pick.concept, undefined, `🆕 New concept from "${pick.goal}"`)
   return outcome === 'rated'
-    ? `🆕 Learned "${pick.concept.concept}". \`/learn\` again for the next one.`
-    : `Stopped "${pick.concept.concept}". \`/learn\` starts it again, and \`/tutor <question>\` talks it through.`
+    ? `🆕 Learned "${pick.concept.concept}". \`/companion-learn\` again for the next one.`
+    : `Stopped "${pick.concept.concept}". \`/companion-learn\` starts it again, and \`/companion-tutor <question>\` talks it through.`
 }
 
 // A side question, answered over the session's own conversation as /btw is.
@@ -533,45 +533,57 @@ Question: ${question}`
   return reply.isAnswered ? `🎓 ${reply.text.trim()}` : `❌ No answer (${reply.reason}). Try again.`
 }
 
+const PREFIX = 'companion-'
+const COMMANDS = [
+  { name: 'roadmap', description: 'Learning companion: list, add, update, remove, export or import roadmaps', argumentHint: '[goal | update <#> | remove <#> | export <#> [anki] | import <file>]' },
+  { name: 'progress', description: 'Learning companion: your roadmaps by stage and what is due', argumentHint: '[# | goal]' },
+  { name: 'practice', description: 'Learning companion: review every concept that is due', argumentHint: '[# | goal]' },
+  { name: 'learn', description: 'Learning companion: learn the next new concept on your roadmap', argumentHint: '[# | goal]' },
+  { name: 'tutor', description: 'Learning companion: ask the tutor a side question', argumentHint: '<question>', immediate: true as const },
+]
+
 export const register: Register = (on, options) => {
   settings = settingsOf(options)
 
   on('session.start', async ($, e, next) => {
-    // A name another command or skill already holds is refused; keep the rest working.
-    const commands = [
-      { name: 'roadmap', description: 'Learning companion: list, add, update, remove, export or import roadmaps', argumentHint: '[goal | update <#> | remove <#> | export <#> [anki] | import <file>]' },
-      { name: 'progress', description: 'Learning companion: your roadmaps by stage and what is due', argumentHint: '[# | goal]' },
-      { name: 'practice', description: 'Learning companion: review every concept that is due', argumentHint: '[# | goal]' },
-      { name: 'learn', description: 'Learning companion: learn the next new concept on your roadmap', argumentHint: '[# | goal]' },
-      { name: 'tutor', description: 'Learning companion: ask the tutor a side question', argumentHint: '<question>', immediate: true as const },
-    ]
-    for (const command of commands) {
-      await $.command.register(command).catch((err: unknown) =>
-        $.ui.toast(`/${command.name} unavailable: ${err instanceof Error ? err.message : String(err)}`))
+    // Each command is `/companion-<name>`, which nothing else should hold, and
+    // also `/<name>` while no other command or skill (`/learn`, `x:learn`) has it.
+    const taken = new Set(
+      (await $.command.list().catch(() => []))
+        .filter(c => c.plugin !== $.plugin.name)
+        .map(c => c.name.split(':').pop()!.toLowerCase()),
+    )
+    for (const command of COMMANDS) {
+      const names = [`${PREFIX}${command.name}`, ...(taken.has(command.name) ? [] : [command.name])]
+      for (const name of names) {
+        // A name a built-in already holds is refused; keep the rest working.
+        await $.command.register({ ...command, name }).catch((err: unknown) =>
+          $.ui.toast(`/${name} unavailable: ${err instanceof Error ? err.message : String(err)}`))
+      }
     }
     showStatus($, await loadState($))
     return next(e)
   })
 
-  on('command.run', { command: 'roadmap' }, async ($, e) => ({
+  on('command.run', { command: ['roadmap', 'companion-roadmap'] }, async ($, e) => ({
     text: await roadmapCommand($, e.args ?? ''),
   }))
 
-  on('command.run', { command: 'progress' }, async ($, e) => ({
+  on('command.run', { command: ['progress', 'companion-progress'] }, async ($, e) => ({
     text: progressCommand(await loadState($), (e.args ?? '').trim()),
   }))
 
-  on('command.run', { command: 'practice' }, async ($, e) => ({
+  on('command.run', { command: ['practice', 'companion-practice'] }, async ($, e) => ({
     text: await practiceCommand($, (e.args ?? '').trim()),
   }))
 
-  on('command.run', { command: 'learn' }, async ($, e) => ({
+  on('command.run', { command: ['learn', 'companion-learn'] }, async ($, e) => ({
     text: await learnCommand($, (e.args ?? '').trim()),
   }))
 
-  on('command.run', { command: 'tutor' }, async ($, e) => {
+  on('command.run', { command: ['tutor', 'companion-tutor'] }, async ($, e) => {
     const question = (e.args ?? '').trim()
-    if (!question) return { text: 'Ask a question: `/tutor why use middleware instead of a helper function?`' }
+    if (!question) return { text: 'Ask a question: `/companion-tutor why use middleware instead of a helper function?`' }
     return { text: await tutor($, question) }
   })
 

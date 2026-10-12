@@ -86,7 +86,7 @@ test('a 2.0 roadmap still loads', async ($, on) => {
 test('/roadmap with no roadmap explains how to start', async ($, on) => {
   mock.store(on)
   const shown = await $.command.run(roadmap())
-  expect(shown.text).toContain('/roadmap <goal>')
+  expect(shown.text).toContain('/companion-roadmap <goal>')
 })
 
 test('/tutor answers over the session, falling back without one', async ($, on) => {
@@ -98,5 +98,5 @@ test('/tutor answers over the session, falling back without one', async ($, on) 
   expect(reply.text).toContain('Middleware runs before handlers.')
 
   const empty = await $.command.run(run('tutor'))
-  expect(empty.text).toContain('/tutor')
+  expect(empty.text).toContain('/companion-tutor')
 })

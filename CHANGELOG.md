@@ -11,6 +11,15 @@ claude plugin marketplace update learning-companion
 claude plugin update learning-companion@learning-companion
 ```
 
+## [2.3.0] - 2026-10-12
+
+### Changed
+
+- Every command is now also `/companion-<name>`: `/companion-roadmap`, `/companion-learn`,
+  `/companion-practice`, `/companion-progress` and `/companion-tutor`. Messages point to these names.
+- The short names (`/learn`, `/practice`, ...) still work, but only while no other command or skill has
+  that name. Before, `/learn` clashed with the `learn` skill in the Claude Desktop app.
+
 ## [2.2.0] - 2026-10-12
 
 ### Added
@@ -78,6 +87,7 @@ Rebuilt as a function-hook plugin (mod). Needs Claude Code 2.1.288 or later; no 
 - Writes to secret files (`.env*`, keys, credentials) are skipped, and secret-looking values in kept snippets
   are replaced with `[REDACTED]`.
 
+[2.3.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/Komeyl94/claude-learning-companion/releases/tag/v2.0.0

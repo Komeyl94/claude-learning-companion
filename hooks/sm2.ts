@@ -105,11 +105,11 @@ const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().t
 export function findRoadmap(state: LearningState | undefined, selector: string): Roadmap | string {
   const roadmaps = state?.roadmaps ?? []
   const sel = selector.trim()
-  if (!roadmaps.length) return 'No roadmaps yet. Start one with `/roadmap <goal>`.'
-  if (!sel) return 'Name a roadmap by its number or goal: see `/roadmap`.'
+  if (!roadmaps.length) return 'No roadmaps yet. Start one with `/companion-roadmap <goal>`.'
+  if (!sel) return 'Name a roadmap by its number or goal: see `/companion-roadmap`.'
   if (/^\d+$/.test(sel)) {
     const found = roadmaps[Number(sel) - 1]
-    return found ?? `No roadmap #${sel}: see \`/roadmap\`.`
+    return found ?? `No roadmap #${sel}: see \`/companion-roadmap\`.`
   }
   const exact = roadmaps.find(r => sameName(r.goal, sel))
   if (exact) return exact
@@ -117,8 +117,8 @@ export function findRoadmap(state: LearningState | undefined, selector: string):
   const [only] = partial
   if (only && partial.length === 1) return only
   return partial.length
-    ? `"${sel}" matches ${partial.length} roadmaps; use its number: see \`/roadmap\`.`
-    : `No roadmap matches "${sel}": see \`/roadmap\`.`
+    ? `"${sel}" matches ${partial.length} roadmaps; use its number: see \`/companion-roadmap\`.`
+    : `No roadmap matches "${sel}": see \`/companion-roadmap\`.`
 }
 
 export const findRoadmapByGoal = (state: LearningState | undefined, goal: string) =>
@@ -260,7 +260,7 @@ const counts = (roadmap: Concept[], now: number) => {
   return { mastered, learning: started - mastered, notStarted: roadmap.length - started, due, total: roadmap.length }
 }
 
-export const NO_ROADMAP = 'No roadmap yet. Start one with `/roadmap <goal>`, e.g. `/roadmap Node.js backend`.'
+export const NO_ROADMAP = 'No roadmap yet. Start one with `/companion-roadmap <goal>`, e.g. `/companion-roadmap Node.js backend`.'
 
 // One roadmap in full: totals, then every concept by stage.
 export function describeProgress({ goal, roadmap }: Roadmap, now: number): string {
@@ -302,6 +302,6 @@ export function describeRoadmaps(state: LearningState | undefined, now: number):
 }
 
 export const ROADMAP_HELP = [
-  '`/progress <#>` details one · `/roadmap <goal>` adds one (or updates it, keeping progress)',
-  '`/roadmap update <#>` regenerates one, keeping progress · `/roadmap remove <#>` deletes one',
+  '`/companion-progress <#>` details one · `/companion-roadmap <goal>` adds one (or updates it, keeping progress)',
+  '`/companion-roadmap update <#>` regenerates one, keeping progress · `/companion-roadmap remove <#>` deletes one',
 ].join('\n')
