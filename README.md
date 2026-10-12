@@ -263,6 +263,10 @@ saves a screenshot of each step to `tests/e2e/out/`. Run it before a release.
 Keep pure logic in `sm2.ts` and `study.ts` so it can be tested without the engine, and add a test with
 each change.
 
+**Releasing.** Bump `version` in `.claude-plugin/plugin.json` and `package.json`, add a section to
+[`CHANGELOG.md`](CHANGELOG.md), then tag `vX.Y.Z` and publish a GitHub release with that section as its notes.
+Installs follow `main`, so a push reaches users on their next `claude plugin marketplace update`.
+
 ## 📄 License
 
 [MIT](LICENSE) © Komeyl Mohebian
