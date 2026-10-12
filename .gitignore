@@ -3,3 +3,6 @@ node_modules/
 .claude-plugin/types/
 tsconfig.json
 *:Zone.Identifier
+
+# Written by `claude plugin eval` on each run
+evals/results/

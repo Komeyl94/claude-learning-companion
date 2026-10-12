@@ -5,12 +5,13 @@
 **Learn while you ship.** A Claude Code plugin that turns the code Claude writes for you into lessons,
 quizzes and spaced-repetition reviews, tied to a roadmap of what you want to master.
 
+[![Tests](https://github.com/Komeyl94/claude-learning-companion/actions/workflows/test.yml/badge.svg)](https://github.com/Komeyl94/claude-learning-companion/actions/workflows/test.yml)
 [![Version](https://img.shields.io/github/package-json/v/Komeyl94/claude-learning-companion?color=6366f1&label=version)](package.json)
 [![Claude Code](https://img.shields.io/badge/Claude_Code-%E2%89%A5_2.1.288-d97757)](https://claude.com/claude-code)
 [![No API key](https://img.shields.io/badge/API_key-not_needed-22c55e)](#-privacy)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Commands](#-commands) · [Privacy](#-privacy) · [FAQ](#-faq) · [Contributing](#-contributing)
+[Quick start](#-quick-start) · [How it works](#-how-it-works) · [Commands](#-commands) · [Settings](#%EF%B8%8F-settings) · [Privacy](#-privacy) · [FAQ](#-faq) · [Contributing](#-contributing)
 
 </div>
 
@@ -28,9 +29,12 @@ before you would forget it.
 - 🎯 **A real roadmap.** 12–20 concepts in ordered stages, from fundamentals to production.
 - 👀 **Spotted in context.** Concepts are detected in what Claude writes or runs, not in a separate course.
 - 🧠 **Lessons, not one-liners.** Explanation, examples, a deeper dive, a quiz, or your own question.
-- 🔁 **Spaced repetition.** [SM-2](https://en.wikipedia.org/wiki/SuperMemo#Description_of_SM-2_algorithm), the algorithm behind Anki, schedules each review.
+- 🔁 **Spaced repetition.** [SM-2](https://en.wikipedia.org/wiki/SuperMemo#Description_of_SM-2_algorithm), the algorithm behind Anki, schedules each review. `/practice` catches up on everything due.
+- 🆕 **Learn on demand.** `/learn` teaches the next concept on your roadmap, no code needed.
 - 🎓 **A tutor on the side.** `/tutor` answers questions about the current session, even mid-turn.
-- 📈 **Visible progress.** Per-stage progress bars, due reviews, and several roadmaps at once.
+- 📝 **Notes you keep.** Every lesson is saved as Markdown, one file per concept.
+- 📈 **Visible progress.** Per-stage progress bars, a daily streak, and several roadmaps at once.
+- 📤 **Share and export.** Hand a roadmap to a teammate, or export it as Anki cards.
 
 ## 🎬 What it looks like
 
@@ -51,7 +55,13 @@ Claude adds a route while you work. When the turn ends:
 ```
 
 Pick **Quiz me** and answer a multiple-choice question about that code. Pick **Rate it** and the next
-review is scheduled. Check where you stand at any time:
+review is scheduled, with your quiz result suggesting the rating. The status line keeps score:
+
+```text
+📚 4/20 mastered · 1 due (/practice) · 🔥 5-day streak
+```
+
+Check where you stand at any time:
 
 ```text
 > /progress
@@ -90,6 +100,7 @@ Start a session and give it a goal:
 ```
 
 That's it. Keep working as usual: lessons show up when Claude touches a concept that is due.
+Want to study right now? `/learn` starts the next concept, and `/practice` goes through what is due.
 
 ## 🧭 How it works
 
@@ -120,24 +131,33 @@ flowchart LR
    | **Rate it** | Ends the lesson and schedules the review |
 
 4. **Review.** Your rating feeds SM-2: intervals grow 1 day, 6 days, then by your ease factor. A concept
-   counts as **mastered** once you rate it Good or Easy at an interval over 30 days.
+   counts as **mastered** once you rate it Good or Easy at an interval over 30 days. After a quiz, the
+   suggested rating is offered first: Good when every answer was right, Hard otherwise.
+5. **Notes.** The lesson is appended to `~/learning-notes/<roadmap>/<concept>.md`, so you can reread it later.
+
+Concepts that never come up in your code are not left behind: `/learn` teaches them in roadmap order,
+and `/practice` reviews whatever is due.
 
 ## ⌨️ Commands
 
 | Command | What it does |
 | --- | --- |
 | `/roadmap <goal>` | Builds a roadmap. For a goal you already have, updates it instead |
+| `/learn [#\|name]` | Teaches the next concept you have not started yet |
+| `/practice [#\|name]` | Goes through every concept due for review, one lesson after another |
+| `/progress [#\|name]` | Every roadmap in full, or just one, by stage |
+| `/tutor <question>` | Asks a side question at any time, even while Claude is working |
 | `/roadmap` | Lists your roadmaps, one line each, with progress and due reviews |
 | `/roadmap update <#\|name>` | Regenerates a roadmap and **keeps your progress** |
 | `/roadmap remove <#\|name>` | Deletes a roadmap and its progress, after you confirm |
-| `/progress [#\|name]` | Every roadmap in full, or just one, by stage |
-| `/tutor <question>` | Asks a side question at any time, even while Claude is working |
+| `/roadmap export <#\|name> [anki]` | Writes the roadmap to a file: JSON to share, or Anki cards |
+| `/roadmap import <file>` | Adds a shared roadmap, or merges it into yours for the same goal |
 
 A roadmap is named by its number in `/roadmap`, its goal, or a unique part of the goal: `/progress 2`,
 `/roadmap update docker`.
 
 <details>
-<summary><b>More about multiple roadmaps, updates and the tutor</b></summary>
+<summary><b>More about multiple roadmaps, updates, sharing and the tutor</b></summary>
 
 <br>
 
@@ -145,22 +165,45 @@ A roadmap is named by its number in `/roadmap`, its goal, or a unique part of th
   every roadmap, and the status line counts them all.
 - **Updates keep progress.** A concept with the same name keeps its review schedule and gets the new
   keywords. A concept you have already studied is never dropped, even when the new roadmap leaves it out.
+- **Built for your stack.** `/roadmap` reads the dependency manifest in your project (`package.json`,
+  `composer.json`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, `pom.xml`,
+  `build.gradle`), so keywords match the libraries you actually use.
+- **Share with a team.** `/roadmap export 1` writes `<goal>.roadmap.json` without your progress.
+  Teammates run `/roadmap import <file>` to start from the same roadmap.
+- **Anki.** `/roadmap export 1 anki` writes `<goal>.anki.txt`, one card per concept with a short
+  definition on the back. In Anki, use File → Import.
 - **`/tutor` sees your session.** Like `/btw`, it answers over the current conversation, so "why did Claude
   use a job here?" just works. It never uses tools or changes anything. In a fresh session it answers
   without that context.
 
 </details>
 
+## ⚙️ Settings
+
+Change them in `/config`, under Learning Companion.
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Lesson model | `haiku` | Model for roadmaps, lessons and quizzes: `haiku`, `sonnet` or `opus` |
+| Lessons while you work | on | Off: no automatic lessons, only `/learn` and `/practice` |
+| Automatic lessons per day | `5` | Cap on automatic lessons; `0` for no limit. `/learn` and `/practice` are never capped |
+| Notes folder | `~/learning-notes` | Where lessons are saved as Markdown, including any code they quote; empty to turn notes off |
+
 ## 🔒 Privacy
 
 - **No API key, no third party.** Every model call goes through your own Claude Code session.
 - **Secret files are never read.** Writes to `.env*`, `*.pem`, `*.key`, SSH keys, `credentials`,
   `secrets.*`, `.npmrc` and `.netrc` are skipped entirely.
-- **Snippets are short-lived and redacted.** For other code, at most 500 characters are kept, only until
-  the lesson ends. API keys, tokens, passwords, URL credentials and private keys are replaced with
-  `[REDACTED]` first.
+- **Snippets are redacted first.** For other code, at most 500 characters are used. API keys, tokens,
+  passwords, URL credentials and private keys are replaced with `[REDACTED]` before anything is kept or
+  sent to the model. The snippet itself is dropped from the plugin's store when the lesson ends.
+- **Lesson notes stay on disk.** Notes are on by default and saved to `~/learning-notes`. A lesson can
+  quote the (redacted) code it was about, so those quotes stay in your notes until you delete them.
+  To turn notes off, clear the Notes folder setting in `/config`.
 - **Local state.** Roadmaps and review schedules live in the plugin's own store under
   `~/.claude/plugins/store/`.
+- **Project manifests, not code.** `/roadmap` reads only dependency manifests, redacted the same way,
+  and only to pick keywords.
 
 ## ❓ FAQ
 
@@ -178,8 +221,10 @@ run on Haiku to keep that small. `/tutor` reuses your session's cached conversat
 
 <br>
 
-No. At most one concept is picked up per turn, only concepts that are due for review are spotted, and the
-lesson waits until Claude has finished. Close the dialog at any time to skip it.
+No. At most one concept is picked up per turn, only concepts that are due for review are spotted, the
+lesson waits until Claude has finished, and there are at most 5 automatic lessons a day (change it in
+`/config`). Close the dialog at any time to skip it, or turn automatic lessons off and study only with
+`/learn` and `/practice`.
 </details>
 
 <details>
@@ -218,15 +263,23 @@ cd claude-learning-companion
 claude --plugin-dir .            # run Claude Code with your local copy
 claude plugin test .             # run the test suites
 claude plugin validate --strict .
+claude plugin eval . --runs 1    # grade roadmap and tutor quality with a model judge
 ```
+
+CI runs `validate` and `test` on every push and pull request. Evals call a model, so run them locally
+when you change a prompt.
 
 | Path | Role |
 | --- | --- |
-| [`hooks/register.ts`](hooks/register.ts) | Hooks: commands, concept spotting (`tool.call`), lessons (`turn.complete`), the tutor |
+| [`hooks/register.ts`](hooks/register.ts) | Hooks: commands, concept spotting (`tool.call`), lessons (`turn.complete`), settings |
 | [`hooks/sm2.ts`](hooks/sm2.ts) | Pure logic: SM-2, keyword matching, roadmap merging, parsing, progress views |
+| [`hooks/study.ts`](hooks/study.ts) | Pure logic: what to study next, rating suggestions, streaks, notes, export |
 | [`tests/`](tests) | Suites for `claude plugin test` |
+| [`evals/`](evals) | Cases for `claude plugin eval` |
+| [`demo/`](demo) | [vhs](https://github.com/charmbracelet/vhs) script that records the demo GIF |
 
-Keep pure logic in `sm2.ts` so it can be tested without the engine, and add a test with each change.
+Keep pure logic in `sm2.ts` and `study.ts` so it can be tested without the engine, and add a test with
+each change.
 
 ## 📄 License
 

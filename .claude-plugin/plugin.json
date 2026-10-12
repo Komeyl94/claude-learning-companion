@@ -1,8 +1,43 @@
 {
   "name": "learning-companion",
   "displayName": "Learning Companion",
-  "version": "2.1.0",
-  "description": "Spots concepts from your learning roadmap while Claude codes, explains them, and schedules reviews with spaced repetition (SM-2).",
-  "author": { "name": "Komeyl Mohebian" },
-  "license": "MIT"
+  "version": "2.2.0",
+  "description": "Turns the code Claude writes into lessons, quizzes and spaced-repetition reviews (SM-2), tied to roadmaps of what you want to learn.",
+  "author": {
+    "name": "Komeyl Mohebian"
+  },
+  "license": "MIT",
+  "userConfig": {
+    "lessonModel": {
+      "type": "string",
+      "title": "Lesson model",
+      "description": "Model for roadmaps, lessons and quizzes. Haiku is fast and cheap; Sonnet and Opus teach in more depth.",
+      "options": [
+        "haiku",
+        "sonnet",
+        "opus"
+      ],
+      "default": "haiku"
+    },
+    "autoLessons": {
+      "type": "boolean",
+      "title": "Lessons while you work",
+      "description": "Start a lesson when Claude uses a due concept. Off: only /learn and /practice start lessons.",
+      "default": true
+    },
+    "maxLessonsPerDay": {
+      "type": "number",
+      "title": "Automatic lessons per day",
+      "description": "How many automatic lessons a day at most; 0 for no limit. /learn and /practice are not limited.",
+      "min": 0,
+      "max": 50,
+      "default": 5
+    },
+    "notesDir": {
+      "type": "string",
+      "title": "Notes folder",
+      "description": "Where each lesson is saved as Markdown, one file per concept, including any code it quotes (secrets redacted). Empty: no notes.",
+      "default": "~/learning-notes"
+    }
+  }
 }

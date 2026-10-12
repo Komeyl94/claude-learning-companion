@@ -17,8 +17,19 @@ export type Roadmap = {
   roadmap: Concept[]
 }
 
+export type Activity = {
+  // Local calendar day of the last rated lesson, as YYYY-MM-DD.
+  lastDay: string
+  // Consecutive days with at least one rated lesson, ending at lastDay.
+  streak: number
+  // Lessons started on `lessonsDay`, counted against the daily cap.
+  lessonsDay?: string
+  lessonsToday?: number
+}
+
 export type LearningState = {
   roadmaps: Roadmap[]
+  activity?: Activity
   // Concept spotted during the current turn, reviewed when the turn ends.
   pendingReview: { goal: string; concept: string; snippet: string } | null
 }
@@ -126,6 +137,22 @@ export function mergeRoadmap(old: Concept[], fresh: Concept[]): Concept[] {
 }
 
 // --- Roadmap parsing ---
+// Words in nearly every program, and file names or paths, say nothing about a
+// concept: "config/" or "get" would fire on any code at all.
+const GENERIC_KEYWORDS = new Set([
+  'get', 'set', 'new', 'id', 'name', 'data', 'value', 'item', 'list', 'type', 'test', 'run', 'use', 'app',
+  'function', 'return', 'class', 'import', 'export', 'const', 'let', 'var', 'if', 'else', 'for', 'while',
+  'public', 'private', 'static', 'async', 'await', 'string', 'int', 'true', 'false', 'null', 'config',
+])
+
+export function isUsefulKeyword(k: string): boolean {
+  if (k.length < 3 || GENERIC_KEYWORDS.has(k)) return false
+  // A path or a file name: "config/", "app/models", ".env", "composer.json"
+  if (/[/\\]/.test(k) || /^\.(env|git\w*|npmrc|htaccess|editorconfig|babelrc|eslintrc|prettierrc)\b/.test(k) || /\.(json|ya?ml|toml|lock|xml|ini|md|txt)$/.test(k)) return false
+  return true
+}
+
+
 export function parseRoadmap(text: string): Concept[] {
   const start = text.indexOf('[')
   const end = text.lastIndexOf(']')
@@ -142,7 +169,7 @@ export function parseRoadmap(text: string): Concept[] {
       !!r && typeof r.concept === 'string' && Array.isArray(r.keywords))
     .map(r => ({
       concept: r.concept,
-      keywords: r.keywords.map(k => String(k).toLowerCase()).filter(Boolean),
+      keywords: r.keywords.map(k => String(k).trim().toLowerCase()).filter(isUsefulKeyword),
       ...(typeof r.stage === 'string' && r.stage.trim() ? { stage: r.stage.trim() } : {}),
       status: 'learning' as const,
       nextReviewDate: 0,
@@ -212,7 +239,7 @@ export function parseQuiz(text: string): Quiz | undefined {
 }
 
 // --- Progress ---
-const isStarted = (c: Concept) => c.status === 'mastered' || c.nextReviewDate > 0
+export const isStarted = (c: Concept) => c.status === 'mastered' || c.nextReviewDate > 0
 
 function progressBar(done: number, total: number, width = 20) {
   const filled = total ? Math.round((done / total) * width) : 0
