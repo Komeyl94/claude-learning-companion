@@ -58,6 +58,26 @@ test('updating a roadmap keeps its progress', async ($, on) => {
   expect(updated.text).not.toContain('Routing: not started')
 })
 
+test('update takes notes about the learner and keeps them for later updates', async ($, on) => {
+  mock.store(on, { state: { roadmaps: [{ goal: 'Laravel backend', roadmap: [] }, { goal: 'Docker', roadmap: [] }], pendingReview: null } })
+  const prompts: string[] = []
+  on('model.complete', (_$, e) => {
+    prompts.push(e.prompt)
+    return answer(ROADMAP)
+  })
+
+  const updated = await $.command.run(roadmap('update 1 senior frontend dev, skip the basics'))
+  expect(updated.text).toContain('Updated "Laravel backend"')
+  expect(prompts[0]).toContain('"senior frontend dev, skip the basics"')
+
+  await $.command.run(roadmap('update laravel backend'))
+  expect(prompts[1]).toContain('"senior frontend dev, skip the basics"')
+
+  const named = await $.command.run(roadmap('update docker I run compose daily'))
+  expect(named.text).toContain('Updated "Docker"')
+  expect(prompts[2]).toContain('"I run compose daily"')
+})
+
 test('/roadmap remove deletes a roadmap once confirmed', async ($, on) => {
   mock.store(on, { state: { roadmaps: [{ goal: 'Docker', roadmap: [] }, { goal: 'Rust', roadmap: [] }], pendingReview: null } })
   choose(on, 'Remove it')
@@ -99,4 +119,40 @@ test('/tutor answers over the session, falling back without one', async ($, on) 
 
   const empty = await $.command.run(run('tutor'))
   expect(empty.text).toContain('/companion-tutor')
+})
+
+// The band above the prompt, as a surface asks for it.
+const BAND = { hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100, scroll: { offset: 0, bodyRows: 10 }, view: {} }
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`the band above the prompt shows progress, due reviews and the streak (${surface})`, async ($, on) => {
+    const studied = { concept: 'Routing', keywords: ['app.get'], status: 'learning', nextReviewDate: 1, repetitions: 1, interval: 1 }
+    const day = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    mock.store(on, { state: { roadmaps: [{ goal: 'Node.js backend', roadmap: [studied, { concept: 'Streams', keywords: ['pipe'] }] }], pendingReview: null, activity: { lastDay: day(new Date()), streak: 2 } } })
+
+    const band = await $.ui.mount({ plugin: 'learning-companion', surface, component: 'AbovePrompt', props: BAND })
+    const text = (await band.find({ type: 'Box' }))?.text ?? ''
+    expect(text).toContain('📚 Learning Companion')
+    expect(text).toContain('0/2 mastered')
+    expect(text).toContain('1 due → /companion-practice')
+    expect(text).toContain('🔥 2-day streak')
+  })
+}
+
+// The engine's own band, drawn when the plugin passes.
+const engineBand = (on: On) =>
+  on('ui.render', { component: 'AbovePrompt' }, () => ({ type: 'Box', props: {}, children: ['engine band'] }))
+
+test('no band without a roadmap', async ($, on) => {
+  engineBand(on)
+  mock.store(on)
+  const band = await $.ui.mount({ plugin: 'learning-companion', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+  expect((await band.find({ type: 'Box' }))?.text).toBe('engine band')
+})
+
+test('a survey keeps the band', async ($, on) => {
+  engineBand(on)
+  mock.store(on, { state: { roadmaps: [{ goal: 'Docker', roadmap: [] }], pendingReview: null } })
+  const band = await $.ui.mount({ plugin: 'learning-companion', surface: 'terminal', component: 'AbovePrompt', props: { ...BAND, hasSurvey: true } })
+  expect((await band.find({ type: 'Box' }))?.text).toBe('engine band')
 })

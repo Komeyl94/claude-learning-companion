@@ -10,7 +10,6 @@ async function start($: Parameters<Parameters<typeof test>[1]>[0], on: On, other
     registered.push(e.name)
     return { value: { command: e.name } }
   })
-  on('ui.status', () => ({ value: undefined }))
   on('session.start', () => ({ cwd: '/work' }))
   await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
   return registered

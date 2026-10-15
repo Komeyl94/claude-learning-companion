@@ -52,7 +52,7 @@ and you choose what comes next:
   </tr>
   <tr>
     <td width="50%"><img src="docs/rating.png" alt="The rating dialog with Good offered first, as the quiz suggests"><br><sub><b>Rating.</b> Your quiz result suggests the rating; SM-2 schedules the next review.</sub></td>
-    <td width="50%"><img src="docs/progress.png" alt="/companion-progress showing five stages of a Laravel roadmap"><br><sub><b>Progress.</b> Every concept by stage, and a streak on the status line.</sub></td>
+    <td width="50%"><img src="docs/progress.png" alt="/companion-progress showing five stages of a Laravel roadmap"><br><sub><b>Progress.</b> Every concept by stage, and a streak above the prompt.</sub></td>
   </tr>
   <tr>
     <td colspan="2"><img src="docs/tutor.png" alt="/companion-tutor answering why the route returns JSON instead of a Blade view"><br><sub><b>Tutor.</b> <code>/companion-tutor</code> answers a side question using what happened in your session.</sub></td>
@@ -149,23 +149,30 @@ For example, with the `learn` skill installed, `/learn` runs that skill and `/co
 | `/companion-progress [#\|name]` | Every roadmap in full, or just one, by stage |
 | `/companion-tutor <question>` | Asks a side question at any time, even while Claude is working |
 | `/companion-roadmap` | Lists your roadmaps, one line each, with progress and due reviews |
-| `/companion-roadmap update <#\|name>` | Regenerates a roadmap and **keeps your progress** |
+| `/companion-roadmap update <#\|name> [about you]` | Regenerates a roadmap and **keeps your progress**, pitched at what you say about yourself |
 | `/companion-roadmap remove <#\|name>` | Deletes a roadmap and its progress, after you confirm |
 | `/companion-roadmap export <#\|name> [anki]` | Writes the roadmap to a file: JSON to share, or Anki cards |
 | `/companion-roadmap import <file>` | Adds a shared roadmap, or merges it into yours for the same goal |
 
 A roadmap is named by its number in `/companion-roadmap`, its goal, or a unique part of the goal: `/companion-progress 2`,
-`/companion-roadmap update docker`.
+`/companion-roadmap update docker`. After `update`, anything more is about you:
+`/companion-roadmap update 1 years of frontend experience, skip the web basics`.
 
 <details>
-<summary><b>More about multiple roadmaps, updates, sharing and the tutor</b></summary>
+<summary><b>More about multiple roadmaps, updates, streaks, sharing and the tutor</b></summary>
 
 <br>
 
 - **Several roadmaps.** Learning React and Kubernetes at the same time? Add both. Concepts are spotted from
-  every roadmap, and the status line counts them all.
+  every roadmap, and the band above the prompt counts them all.
 - **Updates keep progress.** A concept with the same name keeps its review schedule and gets the new
   keywords. A concept you have already studied is never dropped, even when the new roadmap leaves it out.
+- **Pitched at your level.** Notes after `update` (`/companion-roadmap update 1 I know React well`) shape the
+  roadmap and every lesson and quiz on it. They are kept for later updates until you give new ones, and
+  `export` leaves them out.
+- **Daily streak.** The 🔥 above the prompt counts the days in a row with at least one lesson you rated.
+  It stays until you miss a whole day, so a streak from yesterday still shows today. A lesson closed before
+  rating does not count.
 - **Built for your stack.** `/companion-roadmap` reads the dependency manifest in your project (`package.json`,
   `composer.json`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Cargo.toml`, `Gemfile`, `pom.xml`,
   `build.gradle`), so keywords match the libraries you actually use.

@@ -224,6 +224,17 @@ test('notes are off when the notes folder is empty', { options: { notesDir: '' }
   expect([...fs.keys()]).toEqual([])
 })
 
+test('lessons are pitched at the background given in /roadmap update', async ($, on) => {
+  mock.store(on, { state: { roadmaps: [{ goal: 'Laravel', roadmap: [fresh('Routing')], background: 'senior frontend dev' }], pendingReview: null } })
+  const prompts = model(on)
+  files(on)
+  learner(on, { Lesson: ['Quiz me', 'Rate it'], Quiz: ['Maps a GET URL'], Review: ['Good'] })
+
+  await $.command.run(run('learn'))
+  expect(prompts.length).toBeGreaterThan(1)
+  expect(prompts.every(p => p.includes('"senior frontend dev"'))).toBe(true)
+})
+
 test('the lesson model comes from settings', { options: { lessonModel: 'sonnet' } }, async ($, on) => {
   mock.store(on, store([fresh('Routing')]))
   const models: string[] = []

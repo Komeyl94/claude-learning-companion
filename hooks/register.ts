@@ -1,4 +1,4 @@
-import type { EngineInterface, PluginOptions, Register } from 'claude-code'
+import type { EngineInterface, PluginOptions, Register, RenderElement, RenderInput } from 'claude-code'
 import {
   type Concept,
   type LearningState,
@@ -11,6 +11,7 @@ import {
   findDueConcept,
   findRoadmap,
   findRoadmapByGoal,
+  findRoadmapWithNotes,
   isSecretPath,
   mergeRoadmap,
   migrateState,
@@ -72,23 +73,34 @@ async function loadState($: $): Promise<LearningState | undefined> {
 
 async function saveState($: $, state: LearningState) {
   await $.store.set(STATE_KEY, state)
-  showStatus($, state)
+  redrawBand($)
 }
 
-function showStatus($: $, state: LearningState | undefined) {
-  if (!state?.roadmaps.length) return $.ui.status(undefined)
+// The band above the prompt draws from the store; a change redraws it.
+const redrawBand = ($: $) => $.ui.invalidate('ui.render')
+
+// The band's line: what is mastered, what is due, the streak and a lesson
+// waiting for the end of the turn. Undefined while there is no roadmap.
+async function drawBand($: $, e: RenderInput<'AbovePrompt'>) {
+  const state = await loadState($)
+  if (!state?.roadmaps.length) return undefined
   const now = Date.now()
   const concepts = state.roadmaps.flatMap(r => r.roadmap)
   const mastered = concepts.filter(c => c.status === 'mastered').length
   const due = dueConcepts(state, now).length
   const streak = currentStreak(state.activity, now)
+  const { Box, Text } = $.ui.resolve(e)
+  const dot = () => h(Text, { dimColor: true }, '  ·  ')
   const parts = [
-    `📚 ${mastered}/${concepts.length} mastered`,
-    due ? `${due} due (/companion-practice)` : '',
-    streak ? `🔥 ${streak}-day streak` : '',
-    state.pendingReview ? `💡 ${state.pendingReview.concept} (lesson at end of turn)` : '',
-  ]
-  $.ui.status(parts.filter(Boolean).join(' · '))
+    h(Text, null, `${mastered}/${concepts.length} mastered`),
+    due ? h(Text, null, h(Text, { color: 'suggestion', bold: true }, `${due} due`), h(Text, { dimColor: true }, ' → /companion-practice')) : undefined,
+    streak ? h(Text, null, `🔥 ${streak}-day streak`) : undefined,
+    state.pendingReview ? h(Text, null, `💡 ${state.pendingReview.concept}`, h(Text, { dimColor: true }, ' (lesson at end of turn)')) : undefined,
+  ].filter(Boolean)
+  return h(Box, null,
+    h(Text, { wrap: 'truncate-end' },
+      h(Text, { color: 'claude', bold: true }, '📚 Learning Companion'),
+      ...parts.flatMap(part => [dot(), part]))) as RenderElement
 }
 
 // The code a tool call writes or runs, from whichever input fields it has.
@@ -131,11 +143,16 @@ async function projectStack($: $): Promise<string> {
 }
 
 // Builds a roadmap for `goal`, or regenerates the one already held for it
-// with the learner's progress merged in.
-async function generateRoadmap($: $, goal: string): Promise<string> {
+// with the learner's progress merged in. `notes` about the learner replace
+// the ones saved with the roadmap.
+async function generateRoadmap($: $, goal: string, notes = ''): Promise<string> {
   const existing = findRoadmapByGoal(await loadState($), goal)
+  const background = notes || existing?.background
+  const about = background
+    ? `\nAbout the learner, in their words: "${background}". Pitch the roadmap at their level: leave out what they already know and go deeper where it counts.`
+    : ''
   const keep = existing
-    ? `\nThe learner already has these concepts: ${existing.roadmap.map(c => JSON.stringify(c.concept)).join(', ')}. Keep every one that still belongs, with its name spelled exactly the same, and add what is missing.`
+    ? `\nThe learner already has these concepts: ${existing.roadmap.map(c => JSON.stringify(c.concept)).join(', ')}. Keep every one that still belongs${background ? ' at their level' : ''}, with its name spelled exactly the same, and add what is missing.`
     : ''
   const stack = await projectStack($)
   const project = stack
@@ -146,7 +163,7 @@ async function generateRoadmap($: $, goal: string): Promise<string> {
     maxTokens: 6000,
     timeoutMs: 120_000,
     prompt: `You are a curriculum designer. The user's goal is: "${goal}".
-Create a complete learning roadmap of 12-20 key technical concepts, ordered from fundamentals to advanced, grouped into 3-6 stages (e.g. "Foundations", "Data", "Production"). Cover the topic properly: a real learner needs every one of them.${keep}
+Create a complete learning roadmap of 12-20 key technical concepts, ordered from fundamentals to advanced, grouped into 3-6 stages (e.g. "Foundations", "Data", "Production"). Cover the topic properly: a real learner needs every one of them.${about}${keep}
 ${project}For each concept give 3-5 lowercase keywords to detect when they are coding.
 Each keyword must be a whole token exactly as it appears in source code (e.g. "route::", "hasmany", "$table->"), never a fragment of a longer identifier. Prefer distinctive API or library names over common words like "get" or "data". Never use file names or paths (".env", "config/", "package.json").
 Return ONLY a raw JSON array of objects in learning order, with absolutely no markdown fences or extra text.
@@ -156,7 +173,7 @@ Example: [{"stage": "Foundations", "concept": "Routing", "keywords": ["express.r
 
   const fresh = parseRoadmap(reply.text)
   if (!fresh.length) return '❌ The roadmap reply was not usable JSON. Try again.'
-  return addRoadmap($, { goal, roadmap: fresh })
+  return addRoadmap($, { goal, roadmap: fresh, ...(background ? { background } : {}) })
 }
 
 // Adds a roadmap, or merges it into the one already held for its goal.
@@ -167,6 +184,7 @@ async function addRoadmap($: $, incoming: Roadmap): Promise<string> {
   let roadmap: Roadmap
   if (current) {
     current.roadmap = mergeRoadmap(current.roadmap, incoming.roadmap)
+    if (incoming.background) current.background = incoming.background
     roadmap = current
   } else {
     roadmap = incoming
@@ -278,8 +296,8 @@ async function roadmapCommand($: $, args: string): Promise<string> {
     case 'add':
       return target ? generateRoadmap($, target) : 'Name a goal: `/companion-roadmap new Docker`.'
     case 'update': {
-      const found = findRoadmap(await loadState($), target)
-      return typeof found === 'string' ? found : generateRoadmap($, found.goal)
+      const found = findRoadmapWithNotes(await loadState($), target)
+      return typeof found === 'string' ? found : generateRoadmap($, found.roadmap.goal, found.notes)
     }
     case 'remove':
     case 'delete':
@@ -311,14 +329,18 @@ const codeContext = (snippet: string | undefined) =>
     ? `They just worked with this code: \`${snippet}\`.`
     : 'There is no code in front of them: use a small example of your own.'
 
+// Who the lesson is for: the goal, and the learner's own notes when given.
+const aboutLearner = (goal: string, background?: string) =>
+  `The learner's goal is: "${goal}".${background ? ` About them, in their words: "${background}". Pitch it at their level, skipping what they already know.` : ''}`
+
 // One lesson step: a completion about the concept.
-async function teach($: $, goal: string, concept: Concept, snippet: string | undefined, task: string, maxTokens = 500) {
+async function teach($: $, learner: string, concept: Concept, snippet: string | undefined, task: string, maxTokens = 500) {
   const reply = await $.model.complete({
     model: settings.model,
     maxTokens,
     effort: 'low',
     timeoutMs: 30_000,
-    prompt: `You are a patient programming tutor. The learner's goal is: "${goal}".
+    prompt: `You are a patient programming tutor. ${learner}
 ${codeContext(snippet)}
 The concept is "${concept.concept}".
 ${task}
@@ -337,13 +359,13 @@ const MAX_LESSON_STEPS = 8
 
 // A multiple-choice question on the concept: the verdict to show, and whether
 // it was answered right (undefined when no quiz could be made).
-async function quiz($: $, goal: string, concept: Concept, snippet: string | undefined) {
+async function quiz($: $, learner: string, concept: Concept, snippet: string | undefined) {
   const reply = await $.model.complete({
     model: settings.model,
     maxTokens: 500,
     effort: 'low',
     timeoutMs: 30_000,
-    prompt: `You are a programming tutor. The learner's goal is: "${goal}".
+    prompt: `You are a programming tutor. ${learner}
 ${codeContext(snippet)}
 Write ONE multiple-choice question that checks real understanding of "${concept.concept}" (not trivia)${snippet ? ', ideally about this code' : ''}.
 Exactly 4 options, each under 60 characters, all different. Only one is correct.
@@ -384,7 +406,8 @@ async function lesson($: $, goal: string, concept: Concept, snippet: string | un
   const explain = snippet
     ? 'Explain the concept as it relates to this code: what it is, why it matters, and what this code does with it. 3-5 short sentences.'
     : 'Explain the concept from scratch: what it is, why it matters, and a tiny example. 3-5 short sentences.'
-  const explanation = await teach($, goal, concept, snippet, explain, 400)
+  const learner = aboutLearner(goal, findRoadmapByGoal(await loadState($), goal)?.background)
+  const explanation = await teach($, learner, concept, snippet, explain, 400)
   const steps: string[] = []
   const quizResults: boolean[] = []
   // Each step is shown in the dialog, where it is sure to be seen, then
@@ -408,11 +431,11 @@ async function lesson($: $, goal: string, concept: Concept, snippet: string | un
       if (choice === LESSON.done) break
       let text: string | undefined
       if (choice === LESSON.quiz) {
-        const result = await quiz($, goal, concept, snippet)
+        const result = await quiz($, learner, concept, snippet)
         if (result.correct !== undefined) quizResults.push(result.correct)
         text = result.text
       } else {
-        text = await teach($, goal, concept, snippet,
+        text = await teach($, learner, concept, snippet,
           choice === LESSON.example
             ? 'Show one short, different code example of the concept in a realistic situation, then one sentence on what to notice.'
             : choice === LESSON.deeper
@@ -543,7 +566,7 @@ Question: ${question}`
 
 const PREFIX = 'companion-'
 const COMMANDS = [
-  { name: 'roadmap', description: 'Learning companion: list, add, update, remove, export or import roadmaps', argumentHint: '[goal | update <#> | remove <#> | export <#> [anki] | import <file>]' },
+  { name: 'roadmap', description: 'Learning companion: list, add, update, remove, export or import roadmaps', argumentHint: '[goal | update <#> [about you] | remove <#> | export <#> [anki] | import <file>]' },
   { name: 'progress', description: 'Learning companion: your roadmaps by stage and what is due', argumentHint: '[# | goal]' },
   { name: 'practice', description: 'Learning companion: review every concept that is due', argumentHint: '[# | goal]' },
   { name: 'learn', description: 'Learning companion: learn the next new concept on your roadmap', argumentHint: '[# | goal]' },
@@ -569,8 +592,15 @@ export const register: Register = (on, options) => {
           $.ui.toast(`/${name} unavailable: ${err instanceof Error ? err.message : String(err)}`))
       }
     }
-    showStatus($, await loadState($))
+    redrawBand($)
     return next(e)
+  })
+
+  // Our own band rather than `$.ui.status`, whose line the engine leads with
+  // a warning sign and the plugin's name. A survey keeps the band.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.props.hasSurvey) return next(e)
+    return (await drawBand($, e)) ?? next(e)
   })
 
   on('command.run', { command: ['roadmap', 'companion-roadmap'] }, async ($, e) => ({

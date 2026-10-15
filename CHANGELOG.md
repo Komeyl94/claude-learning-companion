@@ -11,6 +11,27 @@ claude plugin marketplace update learning-companion
 claude plugin update learning-companion@learning-companion
 ```
 
+## [2.4.0] - 2026-10-15
+
+### Added
+
+- `/companion-roadmap update <#|name> [about you]`: notes after the roadmap, such as "years of frontend
+  experience, skip the basics", pitch the regenerated roadmap at your level, and drop new concepts that
+  are too basic for you. Every lesson and quiz on that roadmap uses them too. They are kept for later
+  updates until you give new ones, and `export` leaves them out.
+
+### Changed
+
+- Progress, due reviews and the streak now show in a band of their own above the prompt, headed
+  "📚 Learning Companion", with the due count highlighted. Before, they were on Claude Code's plugin status
+  line, which puts a warning sign in front of every plugin's name. The band shows in the terminal and the
+  Desktop app; VS Code and mobile no longer show this line.
+
+### Fixed
+
+- `/companion-roadmap update 1 <notes>` used to read the notes as part of the roadmap's name and report that
+  no roadmap matched.
+
 ## [2.3.1] - 2026-10-12
 
 ### Fixed
@@ -95,6 +116,7 @@ Rebuilt as a function-hook plugin (mod). Needs Claude Code 2.1.288 or later; no 
 - Writes to secret files (`.env*`, keys, credentials) are skipped, and secret-looking values in kept snippets
   are replaced with `[REDACTED]`.
 
+[2.4.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.1.0...v2.2.0

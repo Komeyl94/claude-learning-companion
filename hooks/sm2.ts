@@ -15,6 +15,9 @@ export type Concept = {
 export type Roadmap = {
   goal: string
   roadmap: Concept[]
+  // What the learner said about themselves in `/companion-roadmap update`,
+  // so later updates and every lesson are pitched at their level.
+  background?: string
 }
 
 export type Activity = {
@@ -119,6 +122,20 @@ export function findRoadmap(state: LearningState | undefined, selector: string):
   return partial.length
     ? `"${sel}" matches ${partial.length} roadmaps; use its number: see \`/companion-roadmap\`.`
     : `No roadmap matches "${sel}": see \`/companion-roadmap\`.`
+}
+
+// A roadmap followed by notes about the learner, as `update` takes them:
+// "1 I know React well" or "docker skip the basics". A leading number is the
+// roadmap; otherwise the longest run of leading words that names one.
+export function findRoadmapWithNotes(state: LearningState | undefined, args: string): { roadmap: Roadmap; notes: string } | string {
+  const words = args.trim().split(/\s+/).filter(Boolean)
+  const counts = /^\d+$/.test(words[0] ?? '') ? [1] : words.map((_, i) => words.length - i)
+  for (const n of counts) {
+    const found = findRoadmap(state, words.slice(0, n).join(' '))
+    if (typeof found !== 'string') return { roadmap: found, notes: words.slice(n).join(' ') }
+  }
+  const missing = findRoadmap(state, counts.length === 1 ? words[0]! : args)
+  return typeof missing === 'string' ? missing : { roadmap: missing, notes: '' }
 }
 
 export const findRoadmapByGoal = (state: LearningState | undefined, goal: string) =>
@@ -303,5 +320,5 @@ export function describeRoadmaps(state: LearningState | undefined, now: number):
 
 export const ROADMAP_HELP = [
   '`/companion-progress <#>` details one · `/companion-roadmap <goal>` adds one (or updates it, keeping progress)',
-  '`/companion-roadmap update <#>` regenerates one, keeping progress · `/companion-roadmap remove <#>` deletes one',
+  '`/companion-roadmap update <#> [about you]` regenerates one, keeping progress · `/companion-roadmap remove <#>` deletes one',
 ].join('\n')
