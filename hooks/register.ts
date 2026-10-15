@@ -97,7 +97,7 @@ async function drawBand($: $, e: RenderInput<'AbovePrompt'>) {
     streak ? h(Text, null, `🔥 ${streak}-day streak`) : undefined,
     state.pendingReview ? h(Text, null, `💡 ${state.pendingReview.concept}`, h(Text, { dimColor: true }, ' (lesson at end of turn)')) : undefined,
   ].filter(Boolean)
-  return h(Box, null,
+  return h(Box, { marginTop: 1 },
     h(Text, { wrap: 'truncate-end' },
       h(Text, { color: 'claude', bold: true }, '📚 Learning Companion'),
       ...parts.flatMap(part => [dot(), part]))) as RenderElement

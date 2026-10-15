@@ -11,6 +11,12 @@ claude plugin marketplace update learning-companion
 claude plugin update learning-companion@learning-companion
 ```
 
+## [2.4.1] - 2026-10-15
+
+### Changed
+
+- The progress band above the prompt has a blank row above it, so it stands apart from the conversation.
+
 ## [2.4.0] - 2026-10-15
 
 ### Added
@@ -116,6 +122,7 @@ Rebuilt as a function-hook plugin (mod). Needs Claude Code 2.1.288 or later; no 
 - Writes to secret files (`.env*`, keys, credentials) are skipped, and secret-looking values in kept snippets
   are replaced with `[REDACTED]`.
 
+[2.4.1]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/Komeyl94/claude-learning-companion/compare/v2.2.0...v2.3.0
